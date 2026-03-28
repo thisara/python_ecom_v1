@@ -36,3 +36,8 @@ class ProductOrderItem(BaseModel):
 class ProductResponse():
     def __init__(self, message):
         self.message = message
+
+class Client_Response():
+    def __init__(self, message: str, data: dict):
+        self.message = message
+        self.data = data

@@ -6,8 +6,6 @@ config.read("config.ini")
 conf_messages = config["messages"]
 conf_api_massages = config["api-response-messages"]
 
-print(conf_messages)
-
 def get_global_messages() -> dict:
     
     messages: dict = {
@@ -26,4 +24,6 @@ def get_api_response_messages() -> dict:
         'PRODUCT_NOT_FOUND': conf_api_massages['PRODUCT_NOT_FOUND'],
         'INVALID_STOCK_DATA': conf_api_massages['INVALID_STOCK_DATA']
     }
+
+    return messages
 

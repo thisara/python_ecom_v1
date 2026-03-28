@@ -1,4 +1,4 @@
-from api.utils._response import Client_Response
+from api.dto.product import Client_Response
 from api.dto.product import ProductOrderItem
 
 from api.unit_of_work.product_item_uow import product_order_reservation

@@ -9,12 +9,13 @@ from api.utils._message import get_api_response_messages
 router = APIRouter()
 
 _mutators = ['ADD', 'REM']
+_api_responses = get_api_response_messages()
 
 @router.post("/", tags=["product"])
 def _create_product(product: Product):
     existing_product = get_product(product.code)
     if existing_product != None:
-        return {"message": "Product already exist!"}
+        return _api_responses['PRODUCT_EXIST']
     else:
         message = service.create_product(product)
         return message
@@ -25,7 +26,7 @@ def _get_product(code: int):
     if product != None:
         return product
     else:
-        return "No Product Found!"
+        return _api_responses['PRODUCT_NOT_FOUND']
 
 @router.put("/", tags=["product"])
 def _update_product(product: Product):
@@ -33,7 +34,7 @@ def _update_product(product: Product):
         status = update_product(product)
         return status
     else:
-        return "No Product Found"
+        return _api_responses['PRODUCT_NOT_FOUND']
 
 @router.put("/order/stock", tags=["product item"])
 def _reserve_product_order_stock(productOrderItem: ProductOrderItem):
@@ -41,7 +42,7 @@ def _reserve_product_order_stock(productOrderItem: ProductOrderItem):
         response = create_product_order_item(productOrderItem)
         return response
     else:
-        return "No Product Found!"
+        return _api_responses['PRODUCT_NOT_FOUND']
 
 @router.put("/stock", tags=["product item"])
 def _update_product_stock(productStock: ProductStock):
@@ -49,4 +50,4 @@ def _update_product_stock(productStock: ProductStock):
         status = update_product_stock(productStock)
         return status
     else:
-        return "Invalid product stock data!"
+        return _api_responses['INVALID_STOCK_DATA']
