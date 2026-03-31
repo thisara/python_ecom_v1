@@ -1,11 +1,28 @@
-from api.utils._db_client import get_mongo_client, get_db_conn 
+from api.utils._db_client import DBConnection
 from api.models.product import ProductOderItemData
+from api.dto.product import Repo_Response
+#from pymongo.collection import Collection
+#from pymongo import MongoClient
 
-client = get_mongo_client()
-db = get_db_conn(client)
+#client = get_mongo_client()
+#db = get_db_conn(client)
 COL_PRODUCT_ITEM="product_order_item"
 
-def create_product_item(product_order_item_data:ProductOderItemData, session):
-    col = db[COL_PRODUCT_ITEM]
-    result = col.insert_one(product_order_item_data.__dict__, session=session)
+def repo_create_product_item(product_order_item_data:ProductOderItemData, client = None, session = None):
+    result: Repo_Response = Repo_Response(None, None)
+    try:
+        #col = db[COL_PRODUCT_ITEM]
+        db_connection = DBConnection(client)
+        col = db_connection.get_collection(COL_PRODUCT_ITEM)
+        #col = _get_db_conn(COL_PRODUCT_ITEM, client)
+        data = product_order_item_data.__dict__.copy()
+
+        if not data:
+            result = Repo_Response("Error in item data", {})
+        else:
+            db_response = col.insert_one(data, session=session)
+            result = Repo_Response("Added successfully", {str(db_response.inserted_id)})
+    except Exception as e:
+        print(e)
+
     return result

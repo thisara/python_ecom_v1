@@ -33,6 +33,7 @@ class ProductOrderItem(BaseModel):
     stock: float
     orderRef: int
 
+#?? usage
 class ProductResponse():
     def __init__(self, message):
         self.message = message
@@ -41,3 +42,48 @@ class Client_Response():
     def __init__(self, message: str, data: dict):
         self.message = message
         self.data = data
+    def get_message():
+        return {"message": self.message}
+
+    def get_data():
+        return {"data": self.data}
+
+    def get_all():
+        return {
+            "messsage": self.massage,
+            "data": self.data
+        }
+    
+class Repo_Response():
+    def __init__(self, message: str, data: dict):
+        self.message = message
+        self.data = data
+
+    def get_message():
+        return {"message": self.message}
+
+    def get_data():
+        return {"data": self.data}
+
+    def get_all():
+        return {
+            "messsage": self.massage,
+            "data": self.data
+        }
+
+class Service_Response():
+    def __init__(self, message: str, data: dict):
+        self.message = message
+        self.data = data
+
+    def get_message():
+        return {"message": self.message}
+
+    def get_data():
+        return {"data": self.data}
+
+    def get_all():
+        return {
+            "messsage": self.massage,
+            "data": self.data
+        }

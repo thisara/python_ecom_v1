@@ -22,7 +22,8 @@ def get_api_response_messages() -> dict:
 
     messages: dict = {
         'PRODUCT_NOT_FOUND': conf_api_massages['PRODUCT_NOT_FOUND'],
-        'INVALID_STOCK_DATA': conf_api_massages['INVALID_STOCK_DATA']
+        'INVALID_STOCK_DATA': conf_api_massages['INVALID_STOCK_DATA'],
+        'PRODUCT_EXIST': conf_api_massages['PRODUCT_EXIST']
     }
 
     return messages

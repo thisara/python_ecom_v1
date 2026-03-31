@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from api.service.product_service import get_product, update_product, update_product_stock
+from api.service.product_service import get_product, create_product, update_product_name, update_product_stock
 from api.service.product_item_service import create_product_order_item
 
 from api.dto.product import Product, ProductOrderItem, ProductStock
@@ -13,11 +13,12 @@ _api_responses = get_api_response_messages()
 
 @router.post("/", tags=["product"])
 def _create_product(product: Product):
+    #Bloom Filters
     existing_product = get_product(product.code)
     if existing_product != None:
         return _api_responses['PRODUCT_EXIST']
     else:
-        message = service.create_product(product)
+        message = create_product(product)
         return message
 
 @router.get("/{code}", tags=["product"]) #async await?
@@ -29,9 +30,9 @@ def _get_product(code: int):
         return _api_responses['PRODUCT_NOT_FOUND']
 
 @router.put("/", tags=["product"])
-def _update_product(product: Product):
+def _update_product_name(product: Product):
     if product != None:
-        status = update_product(product)
+        status = update_product_name(product)
         return status
     else:
         return _api_responses['PRODUCT_NOT_FOUND']
@@ -46,7 +47,7 @@ def _reserve_product_order_stock(productOrderItem: ProductOrderItem):
 
 @router.put("/stock", tags=["product item"])
 def _update_product_stock(productStock: ProductStock):
-    if productStock != None and productStock.code >= 1000 and productStock.mutator in __mutators:
+    if productStock != None and productStock.code >= 1000 and productStock.mutator in _mutators:
         status = update_product_stock(productStock)
         return status
     else:
