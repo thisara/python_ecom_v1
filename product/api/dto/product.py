@@ -8,19 +8,21 @@ class Product(BaseModel):
     @field_validator("code", mode="before")
     @classmethod
     def validate_code(cls, value):
+        if value == None:
+            raise ValueError("Prodcut code is required!")
         if value <= 0:
-            raise ValueError("code must be a positive integer")
+            raise ValueError("Prodcut code must be a positive integer!")
         if value <= 1000 or value >= 9999:
-            raise ValueError("code must be between 1000 and 9999")
+            raise ValueError("code must be between 1000 and 9999!")
         return value
 
     @field_validator("name", mode="before")
     @classmethod
     def validate_name(cls, value):
         if not value.strip():
-            raise ValueError("name cannot be empty")
+            raise ValueError("Product name cannot be empty!")
         if len(value) > 100:
-            raise ValueError("name cannot exceed 100 characters")
+            raise ValueError("Product name cannot exceed 100 characters!")
         return value
 
 class ProductStock(BaseModel):
@@ -38,36 +40,32 @@ class ProductResponse():
     def __init__(self, message):
         self.message = message
 
-class Client_Response():
-    def __init__(self, message: str, data: dict):
-        self.message = message
+class Client_Data_Response():
+    def __init__(self, data: dict):
         self.data = data
-    def get_message():
-        return {"message": self.message}
+    def get_data(self):
+        return self.data
 
-    def get_data():
-        return {"data": self.data}
-
-    def get_all():
-        return {
-            "messsage": self.massage,
-            "data": self.data
-        }
+class Client_Message_Response():
+    def __init__(self, message: str):
+        self.message = message
+    def get_message(self):
+        return self.message
     
 class Repo_Response():
     def __init__(self, message: str, data: dict):
         self.message = message
         self.data = data
 
-    def get_message():
-        return {"message": self.message}
+    def get_message(self):
+        return self.message
 
-    def get_data():
-        return {"data": self.data}
+    def get_data(self):
+        return self.data
 
-    def get_all():
+    def get_all(self):
         return {
-            "messsage": self.massage,
+            "message": self.message,
             "data": self.data
         }
 
@@ -76,14 +74,14 @@ class Service_Response():
         self.message = message
         self.data = data
 
-    def get_message():
-        return {"message": self.message}
+    def get_message(self):
+        return self.message
 
-    def get_data():
-        return {"data": self.data}
+    def get_data(self):
+        return self.data
 
-    def get_all():
+    def get_all(self):
         return {
-            "messsage": self.massage,
+            "message": self.message,
             "data": self.data
         }

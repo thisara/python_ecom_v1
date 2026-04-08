@@ -1,10 +1,10 @@
-from api.dto.product import Client_Response
+from api.dto.product import Client_Message_Response
 from api.dto.product import ProductOrderItem
 
 from api.unit_of_work.product_item_uow import product_order_reservation
 from api.service.product_service import get_product
 
-def create_product_order_item(productOrderItem: ProductOrderItem) -> Client_Response:
+def create_product_order_item(productOrderItem: ProductOrderItem) -> Client_Message_Response:
 
     response_message = ""
     source_product = get_product(productOrderItem.code)
@@ -13,4 +13,4 @@ def create_product_order_item(productOrderItem: ProductOrderItem) -> Client_Resp
         
         response_message = product_order_reservation(source_product, productOrderItem)
 
-    return Client_Response(response_message, {})
+    return Client_Message_Response(response_message)

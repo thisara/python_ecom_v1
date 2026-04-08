@@ -4,7 +4,7 @@ from pymongo.database import Database
 from pymongo.collection import Collection
 
 #--
-
+"""
 config = configparser.ConfigParser()
 config.read("config.ini")
 
@@ -19,7 +19,7 @@ def get_mongo_client():
 def get_db_conn(client: MongoClient) -> Database:
     db = client[DB_NAME]
     return db
-
+"""
 #---
 
 CONFIG_FILE="config.ini"
@@ -63,3 +63,4 @@ class DBConnection:
         if self._client:
             self._client.close()
             self._client = None
+            

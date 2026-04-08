@@ -1,4 +1,4 @@
-from api.utils._db_client import get_mongo_client, get_db_conn, DBConnection
+from api.utils._db_client import DBConnection
 
 from api.models.product import ProductData, ProductOderItemData
 from api.dto.product import Product, ProductOrderItem
