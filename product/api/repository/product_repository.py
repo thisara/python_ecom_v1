@@ -1,5 +1,5 @@
 from api.utils._db_client import DBConnection 
-from api.models.product import ProductData
+from api.models.product import ProductData, ProductDescData, ProductStockData
 from api.dto.product import Repo_Response
 from pymongo.errors import DuplicateKeyError
 from api.utils.resp_codes import resp_codes
@@ -10,7 +10,7 @@ RESP_CODES=resp_codes()
 COL_PRODUCT="product"
 
 def repo_update_product(productData:ProductData, client = None, session = None):
-    result: Repo_Response = Repo_Response(None, None)
+    #result: Repo_Response = Repo_Response(None, None)
     try:
         db_connection = DBConnection(client)
         col = db_connection.get_collection(COL_PRODUCT)
@@ -19,85 +19,79 @@ def repo_update_product(productData:ProductData, client = None, session = None):
             { "$set":{"stock": productData.stock, "version": productData.version}},
             session=session
         )
-        result = Repo_Response(RESP_CODES['OK'], None)
+        return Repo_Response(RESP_CODES['OK'], None)
 
     except Exception as e:
         raise e
 
-    return result
-
 #optional client / session
 def repo_create_product(productData: ProductData, client = None, session = None):
-    result: Repo_Response = Repo_Response(None, None)
     try:
         db_connection = DBConnection(client)
         col = db_connection.get_collection(COL_PRODUCT)
         data = productData.__dict__.copy()
-
         if not data:
-            result = Repo_Response(RESP_CODES['ERR'], None)
-        else:
-            db_response = col.insert_one(data)
-            result = Repo_Response(RESP_CODES['OK'], {str(db_response.inserted_id)})
+            return Repo_Response(RESP_CODES['ERR'], None)
+        
+        db_response = col.insert_one(data)
+        return Repo_Response(RESP_CODES['OK'], {str(db_response.inserted_id)})
     
     except DuplicateKeyError as e:
         raise e
     except Exception as e:
         raise e
 
-    return result
-
-def repo_update_product_name(productData: ProductData, client = None, session = None):
-    result: Repo_Response = Repo_Response(None, None)
+def repo_update_product_desc(productDescData: ProductDescData, client = None, session = None):
     try:
         db_connection = DBConnection(client)
         col = db_connection.get_collection(COL_PRODUCT)
+        data = productDescData.__dict__.copy()
+        if not data:
+            return Repo_Response(RESP_CODES['ERR'], None)
 
         db_response = col.update_one(
-                { "code": productData.code},
-                { "$set":{"name": productData.name, "version": productData.version}},
+                { "code": data.get("code")},
+                { "$set":{"name": data.get("name"), "version": data.get("version")}},
             upsert=False)
 
-        result = Repo_Response(RESP_CODES['OK'], None)
+        return Repo_Response(RESP_CODES['OK'], None)
 
     except Exception as e:
         raise e
     
-    return result
+    #return result
 
-def repo_update_product_stock(productData: ProductData, client = None, session = None):
-    result: Repo_Response = Repo_Response(None, None)
+def repo_update_product_stock(productStockData: ProductStockData, client = None, session = None):
+    #result: Repo_Response = Repo_Response(None, None)
     try:
         db_connection = DBConnection(client)
         col = db_connection.get_collection(COL_PRODUCT)
 
         db_response = col.update_one(
-                { "code": productData.code},
-                { "$set":{"stock": productData.stock, "version": productData.version}},
+                { "code": productStockData.code},
+                { "$set":{"stock": productStockData.stock, "version": productStockData.version}},
             upsert=False)
-        result = Repo_Response(RESP_CODES['OK'], None)
+        return Repo_Response(RESP_CODES['OK'], None)
         
     except Exception as e:
         raise e
     
-    return result
+    #return result
 
 def repo_get_product(code: int) -> Repo_Response:
-    result: Repo_Response = Repo_Response(None, None)
     try:
         db_connection = DBConnection()
         col = db_connection.get_collection(COL_PRODUCT)
         data = col.find_one({"code": code})
-        if data != None:
-            result = Repo_Response(RESP_CODES['OK'], _to_product(data))
-        else:
-            result = Repo_Response(RESP_CODES['ERR'], None)
     except Exception as e:
-        log.info(f"Error in fetching {code} - {e}")
-        raise e
-
-    return result
-
+        log.info(f"Error in fetching {code} : {e}")
+        raise
+    
+    if data is not None:
+        return Repo_Response(message=None, data=_to_product(data))
+        
+    return Repo_Response(message=None, data=None)
+    
 #DT UTILS
 
 def _to_product(data: dict) -> ProductData:

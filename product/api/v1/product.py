@@ -1,16 +1,16 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
-from api.service.product_service import get_product, create_product, update_product_name, update_product_stock
+from api.service.product_service import get_product, create_product, update_product_desc, update_product_stock
 from api.service.product_item_service import create_product_order_item
 
 from api.dto.product import Product, ProductOrderItem, ProductStock, Client_Data_Response, Client_Message_Response
+from api.models.product import ProductData, ProductDescData, ClientProductData
+
 from api.utils._message import get_api_response_messages
-
 from api.utils.resp_codes import resp_codes
-from api.models.product import ProductData, ClientProductData
 from api.utils.app_logger import logger
-log = logger(__name__)
 
+log = logger(__name__)
 router = APIRouter()
 
 RESP_CODES=resp_codes()
@@ -18,70 +18,122 @@ _mutators = ['ADD', 'REM']
 _api_responses = get_api_response_messages()
 
 @router.post("/", tags=["product"])
-def _create_product(product: Product):
-    #Bloom Filters
-    if product == None and product.code == None:
-        log.info(f"{_api_responses['INVALID_PRODUCT_DATA']}")
+def create_product_endpoint(product: Product):
+
+    if product is None:
+        log.warning(f"Invalid product data provided.")
         return Client_Message_Response(_api_responses['INVALID_PRODUCT_DATA'])
 
-    response = create_product(_to_product_data(product))
-
-    if response == None and response.message == None:
-        log.info(f"{prod_code} {_api_responses['PRODUCT_NOT_CREATED']}")
-        return Client_Message_Response(f"{prod_code} {_api_responses['PRODUCT_NOT_CREATED']}")
-
-    prod_code = product.code
-    response_code = response.message
+    try:
+        prod_code = product.code
+        response = create_product(_to_product_data(product))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error creating Product code {prod_code} : {e}")
     
-    if response_code == RESP_CODES['OK']:
+    response_code = getattr(response, "message", None)
+
+    if response_code is not None and response_code == RESP_CODES['OK']:
         log.info(f"{prod_code} {_api_responses['PRODUCT_CREATED']}")
         return Client_Message_Response(f"{prod_code} {_api_responses['PRODUCT_CREATED']}")
-    elif response_code == RESP_CODES['DUP']:
+    
+    if response_code is not None and response_code == RESP_CODES['DUP']:
         log.info(f"{prod_code} {_api_responses['PRODUCT_EXIST']}")
-        return Client_Message_Response(f"{prod_code} {_api_responses['PRODUCT_EXIST']}")
-    else:
-        log.info(f"{prod_code} {_api_responses['PRODUCT_NOT_CREATED']}")
-        return Client_Message_Response(f"{prod_code} {_api_responses['PRODUCT_NOT_CREATED']}")
+        raise HTTPException(status_code=409, detail=f"{prod_code} {_api_responses['PRODUCT_EXIST']}")
+    
+    log.warning(f"{prod_code} {_api_responses['PRODUCT_NOT_CREATED']}")
+    raise HTTPException(status_code=400, detail=f"Something wrong creating {prod_code}.")
 
 
 @router.get("/{code}", tags=["product"]) #async await?
-def _get_product(code: int):
-    product = get_product(code)
-    #print(getattr(product, "message", None))
-    if product != None and product.message == RESP_CODES['OK']:
-        return Client_Data_Response(_to_client_product_data(product.data))
-    else:
-        log.info(f"{code} {_api_responses['PRODUCT_NOT_FOUND']}")
-        return Client_Message_Response(_api_responses['PRODUCT_NOT_FOUND'])
+def get_product_endpoint(code: int):
+    try:
+        response = get_product(code)
+    except Exception as e:
+        log.error(f"Error fetching Product Code {code} : {e}")
+        raise HTTPException(status_code=500, detail=_api_responses['INTERNAL_ERROR']) 
+
+    data = getattr(response, "data", None)
+
+    if data is not None:
+        return Client_Data_Response(_to_client_product_data(data))
+
+    log.warning(f"Product {code} not found!")
+    raise HTTPException(status_code=404, detail=_api_responses['PRODUCT_NOT_FOUND'])
+    
 
 @router.put("/", tags=["product"])
-def _update_product_name(product: Product):
-    if product != None:
-        status = update_product_name(product)
-        return status
-    else:
-        log.info(f"{_api_responses['PRODUCT_NOT_FOUND']}")
-        return _api_responses['PRODUCT_NOT_FOUND']
+def update_product_desc_endpoint(product: Product):
+    if product is None:
+        raise HTTPException(status_code=400, detail=f"{_api_responses['PRODUCT_NOT_UPDATED']}")
+
+    prod_code = product.code
+
+    try:
+        response = update_product_desc(_to_product_desc_data(product))
+    except Exception as e:
+        log.warning(f"Error updating product : {e}")
+        raise HTTPException(status_code=500, detail=f"Error updating product code {prod_code}!")
+
+    response_code = getattr(response, "message", None)
+
+    if response_code is not None and response_code == RESP_CODES['OK']:
+        log.info(f"Product code : {prod_code} is updated!")
+        return Client_Message_Response(f"{prod_code} {_api_responses['PRODUCT_UPDATED']}")
+    
+    log.warning(f"Product code : {product} is not updated!")
+    raise HTTPException(status_code=400, detail=f"{_api_responses['PRODUCT_NOT_UPDATED']}")
+
 
 @router.put("/order/stock", tags=["product item"])
-def _reserve_product_order_stock(productOrderItem: ProductOrderItem):
-    if productOrderItem != None and productOrderItem.code >= 1000:
-        response = create_product_order_item(productOrderItem)
-        return response
-    else:
-        log.info(f"{_api_responses['PRODUCT_NOT_FOUND']}")
-        return _api_responses['PRODUCT_NOT_FOUND']
+def reserve_product_order_stock_endpoint(productOrderItem: ProductOrderItem):
+    if productOrderItem is not None:
+        try:
+            response = create_product_order_item(productOrderItem)
+        except Exception as e:
+            log.warning(f"Error reserving product items.")
+            raise HTTPException(status_code=500, detail=f"Error reserving products.")
 
-@router.put("/stock", tags=["product item"])
-def _update_product_stock(productStock: ProductStock):
-    if productStock != None and productStock.code >= 1000 and productStock.mutator in _mutators:
-        status = update_product_stock(productStock)
-        return status
-    else:
-        log.info(f"{_api_responses['INVALID_STOCK_DATA']}")
-        return _api_responses['INVALID_STOCK_DATA']
+    response_code = getattr(response, "message", None)
 
+    if response_code is not None and response_code == RESP_CODES['OK']:
+        log.info(f"Product reserved successfully for product code : {productOrderItem.code}")
+        return Client_Message_Response(f"{productOrderItem.code} {_api_responses['PRODUCT_RESERVED']}")
 
+    if response_code is not None and response_code == RESP_CODES['LOW']:
+        log.info(f"Low product stock available for product code : {productOrderItem.code}")
+        return Client_Message_Response(f"{productOrderItem.code} {_api_responses['PRODUCT_LOW_STOCK']}")
+
+    log.warning(f"{_api_responses['PRODUCT_NOT_RESERVED']}")
+    return HTTPException(status_code=400, detail=f"{_api_responses['PRODUCT_NOT_RESERVED']}")
+        
+
+@router.put("/stock", tags=["product stock"])
+def update_product_stock_endpoint(productStock: ProductStock):
+    if productStock is None or productStock.mutator not in _mutators:
+        raise HTTPException(status_code=400, detail=f"{_api_responses['PRODUCT_NOT_UPDATED']}")
+        
+    prod_code = productStock.code
+
+    try:
+        response = update_product_stock(productStock)
+    except Exception as e:
+        log.warning(f"Error updating product : {e}")
+        raise HTTPException(status_code=500, detail=f"Error updating product code {prod_code}!")
+
+    response_code = getattr(response, "message", None)
+
+    if response is not None and response_code == RESP_CODES['OK']:
+        log.info(f"Product code : {prod_code} is updated!")
+        return Client_Message_Response(f"{prod_code} {_api_responses['PRODUCT_UPDATED']}")
+    
+    if response is not None and response_code == RESP_CODES['LOW']:
+        log.info(f"Product code : {prod_code} has low stock!")
+        return Client_Message_Response(f"{prod_code} {_api_responses['PRODUCT_LOW_STOCK']}")
+
+    log.warning(f"Product : {productStock} is not updated!")
+    raise HTTPException(status_code=400, detail=f"{_api_responses['PRODUCT_NOT_UPDATED']}")
+
+#--
 
 def _to_product_data(product: Product) -> ProductData:
     if not product:
@@ -94,6 +146,15 @@ def _to_product_data(product: Product) -> ProductData:
         version=_get_object_attr(product, 'version')
     )
 
+def _to_product_desc_data(product: Product) -> ProductData:
+    if not product:
+        return None
+
+    return ProductDescData(
+        code=product.code,
+        name=product.name,
+        version=_get_object_attr(product, 'version')
+    )
 
 def _to_client_product_data(data: ProductData):
     if not data:

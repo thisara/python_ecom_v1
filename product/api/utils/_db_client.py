@@ -28,7 +28,7 @@ class DBConnection:
     def __init__(self, client: MongoClient = None, config_file: str = CONFIG_FILE):
         self._config = configparser.ConfigParser()
         self._config.read(config_file)
-
+        
         try:
             self.db_url = self._config["database"]["MONGO_URL"]
             self.db_name = self._config["database"]["DB_NAME"]
@@ -44,6 +44,7 @@ class DBConnection:
     def get_client(self) -> MongoClient:
         if self._client is None:
             try:
+                print("New client!")
                 self._client = MongoClient(self.db_url)
             except PyMongoError as e:
                 print(e)

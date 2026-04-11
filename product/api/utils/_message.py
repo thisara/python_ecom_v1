@@ -6,6 +6,9 @@ config.read("config.ini")
 conf_messages = config["messages"]
 conf_api_massages = config["api-response-messages"]
 
+global_message_keys = None
+api_message_keys = None
+
 def get_global_messages() -> dict:
     print("Messages initiated!")
     messages: dict = {}
