@@ -4,7 +4,8 @@ def resp_codes() -> dict:
         "OK":"SUCCESS",
         "ERR": "FAILURE",
         "DUP" : "EXIST",
-        "LOW" : "LOW STOCK"
+        "LOW" : "LOW STOCK",
+        "VER" : "VERSION MISMATCH"
     }
 
     return codes

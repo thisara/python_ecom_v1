@@ -7,7 +7,6 @@ f_file_path = '.'
 f_file_name = "app.log"
 
 def logger(module_name = __name__):
-    print("Logger initiated!")
     log = logging.getLogger(module_name)
     log.setLevel(logging.DEBUG)
 

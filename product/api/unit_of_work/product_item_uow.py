@@ -1,4 +1,4 @@
-from api.utils._db_client import DBConnection
+from api.utils._db_client import DBConnection, get_collection, get_client
 
 from api.models.product import ProductData, ProductOderItemData
 from api.dto.product import Product, ProductOrderItem, Repo_Response
@@ -15,9 +15,10 @@ log = logger(__name__)
 def product_order_reservation(product: Product, productOrderItem: ProductOrderItem) -> str:
 
     try:
-        db_connection = DBConnection()
-        client = db_connection.get_client()
-
+        #db_connection = DBConnection()
+        #client = db_connection.get_client()
+        client = get_client()
+        
         product_code = product.code
         product_name = product.name
         curr_product_version = product.version
@@ -45,15 +46,9 @@ def product_order_reservation(product: Product, productOrderItem: ProductOrderIt
 
                         return Repo_Response(RESP_CODES['OK'], None)
         else:
-            log.warning(f"Low stock available for product code {prod_code}")
-            return Repo_Response(RESP_CODES['LOW'], None)
+            log.warning(f"Stale version of product code {product_code}")
+            return Repo_Response(RESP_CODES['VER'], None)
 
     except Exception as e:
         log.warning(f"Error reserving items for order : {e}")
-        raise e
-    finally:
-        #check for active sessions!
-        if session is not None:
-            session.end_session()
-        if client is not None:
-            client.close()
+        raise

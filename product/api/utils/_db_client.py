@@ -2,66 +2,65 @@ import configparser
 from pymongo import MongoClient
 from pymongo.database import Database
 from pymongo.collection import Collection
+from threading import Lock
+from api.utils.app_logger import logger
 
-#--
-"""
-config = configparser.ConfigParser()
-config.read("config.ini")
-
-MONGO_URL = config["database"]["MONGO_URL"]
-DB_NAME = config["database"]["DB_NAME"]
-
-client = MongoClient(MONGO_URL)
-
-def get_mongo_client():
-    return client
-
-def get_db_conn(client: MongoClient) -> Database:
-    db = client[DB_NAME]
-    return db
-"""
-#---
-
+log = logger(__name__)
 CONFIG_FILE="config.ini"
 
 class DBConnection:
-    def __init__(self, client: MongoClient = None, config_file: str = CONFIG_FILE):
-        self._config = configparser.ConfigParser()
-        self._config.read(config_file)
-        
-        try:
-            self.db_url = self._config["database"]["MONGO_URL"]
-            self.db_name = self._config["database"]["DB_NAME"]
-        except Exception as e:
-            print(e)
-            raise MongoConfigError(f"Missing configurations {e}")
-        
-        if client is None:
-            self._client: MongoClient | None = None
-        else:
-            self._client = client
+    _instance = None
+    _lock = Lock()
 
-    def get_client(self) -> MongoClient:
-        if self._client is None:
+    def __new__(cls, client: MongoClient = None, config_file: str = CONFIG_FILE):
+        if not cls._instance:
+            log.info(f"Start creating a new database client.")
+            
             try:
-                print("New client!")
-                self._client = MongoClient(self.db_url)
-            except PyMongoError as e:
-                print(e)
-                raise RuntimeError(f"Failed to connect to DB: {e}")
+                _config = configparser.ConfigParser()
+                _config.read(config_file)
+                _config.db_url = _config["database"]["MONGO_URL"]
+                _config.db_name = _config["database"]["DB_NAME"]
+            except Exception as e:
+                raise e
+
+            log.info(f"Database connection url : {_config.db_url}")
+            log.info(f"Database connection name : {_config.db_name}")
+
+            with cls._lock:
+                if not cls._instance:
+                    cls._instance = super().__new__(cls)
+
+                    try:
+                        cls._instance._client = MongoClient(_config.db_url)
+                        cls._instance._db = cls._instance._client[_config.db_name]
+                    except PyMongoError as e:
+                        log.error(f"Failed to connect to DB: {e}")
+                        raise
+
+                    log.info(f"A new database client is created.")
+        
+        return cls._instance
+
+    def _get_client(self):
         return self._client
 
-    def get_db(self) -> Database:
-        client = self.get_client()
-        return client[self.db_name]
+    def _get_db(self):
+        return self._db
 
-    def get_collection(self, collection_name: str) -> Collection:
-        db = self.get_db()
-        collection = db[collection_name]
-        return collection
+    def _get_collection(self, col_name):
+        db = self._get_db()
+        return db[col_name]
 
-    def close(self):
-        if self._client:
-            self._client.close()
-            self._client = None
-            
+
+def get_db():
+    db = DBConnection()
+    return db._get_db()
+
+def get_client():
+    db = DBConnection()
+    return db._get_client()
+
+def get_collection(col_name):
+    db = DBConnection()
+    return db._get_collection(col_name)

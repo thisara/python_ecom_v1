@@ -91,7 +91,7 @@ def reserve_product_order_stock_endpoint(productOrderItem: ProductOrderItem):
             response = create_product_order_item(productOrderItem)
         except Exception as e:
             log.warning(f"Error reserving product items.")
-            raise HTTPException(status_code=500, detail=f"Error reserving products.")
+            raise #HTTPException(status_code=500, detail=f"Error reserving products.")
 
     response_code = getattr(response, "message", None)
 
@@ -102,6 +102,10 @@ def reserve_product_order_stock_endpoint(productOrderItem: ProductOrderItem):
     if response_code is not None and response_code == RESP_CODES['LOW']:
         log.info(f"Low product stock available for product code : {productOrderItem.code}")
         return Client_Message_Response(f"{productOrderItem.code} {_api_responses['PRODUCT_LOW_STOCK']}")
+
+    if response_code is not None and response_code == RESP_CODES['VER']:
+        log.warning(f"Update requested on stale version of product code : {productOrderItem.code}")
+        return Client_Message_Response(f"{productOrderItem.code} {_api_responses['PRODUCT_VER_INCORRECT']}")
 
     log.warning(f"{_api_responses['PRODUCT_NOT_RESERVED']}")
     return HTTPException(status_code=400, detail=f"{_api_responses['PRODUCT_NOT_RESERVED']}")
