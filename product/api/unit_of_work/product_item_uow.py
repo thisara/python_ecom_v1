@@ -1,22 +1,22 @@
-from api.utils._db_client import DBConnection, get_collection, get_client
+from api.utils.db_tools import get_collection, get_client
 
-from api.models.product import ProductData, ProductOderItemData
+from api.models.product import ProductStockData, ProductOderItemData
 from api.dto.product import Product, ProductOrderItem, Repo_Response
 
 from api.repository.product_item_repository import repo_create_product_item
-from api.repository.product_repository import repo_update_product
+from api.repository.product_repository import repo_update_product_stock
 from api.utils._message import get_global_messages
 from api.utils.app_logger import logger
 from api.utils.resp_codes import resp_codes
+from datetime import datetime, timezone
 
 RESP_CODES=resp_codes()
 log = logger(__name__)
+__INIT_STATE = 'active'
 
-def product_order_reservation(product: Product, productOrderItem: ProductOrderItem) -> str:
+def product_order_reservation(product: Product, prod_odr_itm: ProductOrderItem) -> str:
 
     try:
-        #db_connection = DBConnection()
-        #client = db_connection.get_client()
         client = get_client()
         
         product_code = product.code
@@ -26,19 +26,35 @@ def product_order_reservation(product: Product, productOrderItem: ProductOrderIt
 
         global_messages = get_global_messages()
 
-        if curr_product_version == productOrderItem.version:
+        if curr_product_version == prod_odr_itm.version:
             
                 with client.start_session() as session:
 
                     new_product_version = curr_product_version + 1
-                    new_product_stock = curr_product_stock - productOrderItem.stock
-                    productData = ProductData(product_code,product_name,new_product_stock,new_product_version)
+                    new_product_stock = curr_product_stock - prod_odr_itm.stock
+                    
+                    tx_time = datetime.now(timezone.utc)
+
+                    productStockData = ProductStockData(
+                        product_code,
+                        new_product_stock,
+                        new_product_version,
+                        tx_time
+                    )
                     
                     with session.start_transaction():    
 
-                        product_order_item_data = ProductOderItemData(productOrderItem.code, productOrderItem.stock, productOrderItem.orderRef, new_product_version)
+                        product_order_item_data = ProductOderItemData(
+                            prod_odr_itm.code, 
+                            prod_odr_itm.stock, 
+                            prod_odr_itm.orderRef, 
+                            new_product_version,
+                            tx_time,
+                            tx_time,
+                            __INIT_STATE
+                        )
                         
-                        repo_update_product(productData, client, session)
+                        repo_update_product_stock(productStockData, client, session)
                         repo_create_product_item(product_order_item_data, client, session)
                         
                         session.commit_transaction()

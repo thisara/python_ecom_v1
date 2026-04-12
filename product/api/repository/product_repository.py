@@ -1,14 +1,17 @@
-from api.utils._db_client import get_collection
+from api.utils.db_tools import get_collection, get_async_collection, get_collection_names
 from api.models.product import ProductData, ProductDescData, ProductStockData
 from api.dto.product import Repo_Response
 from pymongo.errors import DuplicateKeyError
 from api.utils.resp_codes import resp_codes
+from dataclasses import asdict
+import asyncio
 from api.utils.app_logger import logger
 
 log = logger(__name__)
 RESP_CODES=resp_codes()
-COL_PRODUCT="product"
+COL_PRODUCT=get_collection_names().get('PRODUCT')
 
+#??remove?
 def repo_update_product(productData:ProductData, client = None, session = None):
     try:
         col = get_collection(COL_PRODUCT)
@@ -20,14 +23,14 @@ def repo_update_product(productData:ProductData, client = None, session = None):
         return Repo_Response(RESP_CODES['OK'], None)
 
     except Exception as e:
-        raise e
+        raise
 
 
 #optional client / session
 def repo_create_product(productData: ProductData, client = None, session = None):
     try:
         col = get_collection(COL_PRODUCT)
-        data = productData.__dict__.copy()
+        data = asdict(productData)
         if not data:
             return Repo_Response(RESP_CODES['ERR'], None)
         
@@ -35,46 +38,65 @@ def repo_create_product(productData: ProductData, client = None, session = None)
         return Repo_Response(RESP_CODES['OK'], {str(db_response.inserted_id)})
     
     except DuplicateKeyError as e:
-        raise e
+        raise
     except Exception as e:
-        raise e
+        raise
 
 
 def repo_update_product_desc(productDescData: ProductDescData, client = None, session = None):
     try:
         col = get_collection(COL_PRODUCT)
-        data = productDescData.__dict__.copy()
+        data = asdict(productDescData)
         if not data:
             return Repo_Response(RESP_CODES['ERR'], None)
 
         db_response = col.update_one(
                 { "code": data.get("code")},
-                { "$set":{"name": data.get("name"), "version": data.get("version")}},
+                { "$set":{
+                    "name": data.get("name"), 
+                    "version": data.get("version"),
+                    "date_updated": data.get("date_updated")}},
             upsert=False)
 
         return Repo_Response(RESP_CODES['OK'], None)
 
     except Exception as e:
-        raise e
+        raise
 
 
 def repo_update_product_stock(productStockData: ProductStockData, client = None, session = None):
     try:
         col = get_collection(COL_PRODUCT)
+        data = asdict(productStockData)
         db_response = col.update_one(
                 { "code": productStockData.code},
-                { "$set":{"stock": productStockData.stock, "version": productStockData.version}},
+                { "$set":{
+                    "stock": data.get("stock"), 
+                    "version": data.get("version"),
+                    "date_updated": data.get("date_updated")}},
             upsert=False)
         return Repo_Response(RESP_CODES['OK'], None)
         
     except Exception as e:
-        raise e
-
+        raise
 
 def repo_get_product(code: int) -> Repo_Response:
     try:
         col = get_collection(COL_PRODUCT)
         data = col.find_one({"code": code})
+    except Exception as e:
+        log.info(f"Error in fetching {code} : {e}")
+        raise
+    
+    if data is not None:
+        return Repo_Response(message=None, data=_to_product(data))
+        
+    return Repo_Response(message=None, data=None)
+
+async def repo_get_async_product(code: int) -> Repo_Response:
+    try:
+        col = get_async_collection(COL_PRODUCT)
+        data = await col.find_one({"code": code})
     except Exception as e:
         log.info(f"Error in fetching {code} : {e}")
         raise

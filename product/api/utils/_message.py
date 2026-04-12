@@ -24,4 +24,3 @@ def get_api_response_messages() -> dict:
         messages[section.upper()] = conf_api_massages[section.upper()]
     
     return messages
-

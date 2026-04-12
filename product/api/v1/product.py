@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 
-from api.service.product_service import get_product, create_product, update_product_desc, update_product_stock
+from api.service.product_service import get_async_product, create_product, update_product_desc, update_product_stock
 from api.service.product_item_service import create_product_order_item
 
 from api.dto.product import Product, ProductOrderItem, ProductStock, Client_Data_Response, Client_Message_Response
@@ -28,7 +28,7 @@ def create_product_endpoint(product: Product):
         prod_code = product.code
         response = create_product(_to_product_data(product))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error creating Product code {prod_code} : {e}")
+        raise #HTTPException(status_code=500, detail=f"Error creating Product code {prod_code} : {e}")
     
     response_code = getattr(response, "message", None)
 
@@ -44,10 +44,10 @@ def create_product_endpoint(product: Product):
     raise HTTPException(status_code=400, detail=f"Something wrong creating {prod_code}.")
 
 
-@router.get("/{code}", tags=["product"]) #async await?
-def get_product_endpoint(code: int):
+@router.get("/{code}", tags=["product"])
+async def get_product_endpoint(code: int):
     try:
-        response = get_product(code)
+        response = await get_async_product(code)
     except Exception as e:
         log.error(f"Error fetching Product Code {code} : {e}")
         raise HTTPException(status_code=500, detail=_api_responses['INTERNAL_ERROR']) 
@@ -91,7 +91,7 @@ def reserve_product_order_stock_endpoint(productOrderItem: ProductOrderItem):
             response = create_product_order_item(productOrderItem)
         except Exception as e:
             log.warning(f"Error reserving product items.")
-            raise #HTTPException(status_code=500, detail=f"Error reserving products.")
+            raise HTTPException(status_code=500, detail=f"Error reserving products.")
 
     response_code = getattr(response, "message", None)
 

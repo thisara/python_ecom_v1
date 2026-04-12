@@ -16,12 +16,14 @@ class ProductDescData():
     code: str
     name: str
     version: int
+    date_updated: Optional[str] = None 
 
 @dataclass
 class ProductStockData():
     code: str
     stock: float
     version: int
+    date_updated: Optional[str] = None 
 
 @dataclass
 class ClientProductData():
@@ -30,18 +32,12 @@ class ClientProductData():
     stock: float
     version: int
 
-"""
-    def __init__(self, code, name, stock, version):
-        self.code = code
-        self.name = name
-        self.stock = stock
-        self.version = version
-"""
+@dataclass
 class ProductOderItemData():
-    def __init__(self, code, stock, orderRef, version):
-        self.code = code
-        self.stock = stock
-        self.orderRef = orderRef
-        self.version = version
-
-
+    code: str
+    stock: float
+    orderRef: str
+    version: int
+    date_created: Optional[str] = None 
+    date_updated: Optional[str] = None 
+    is_active: Optional[str] = True 
