@@ -7,7 +7,7 @@ from api.utils.app_logger import logger
 log = logger(__name__)
 COL_PRODUCT_ITEM=get_collection_names().get('PRODUCT_ITEM')
 
-def repo_create_product_item(prodcutOrderItemData:ProductOderItemData, client = None, session = None):
+def repo_create_product_item(prodcutOrderItemData:ProductOderItemData, session = None) -> Repo_Response:
     try:
         col = get_collection(COL_PRODUCT_ITEM)
         data = asdict(prodcutOrderItemData)

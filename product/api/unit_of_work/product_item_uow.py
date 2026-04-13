@@ -54,8 +54,8 @@ def product_order_reservation(product: Product, prod_odr_itm: ProductOrderItem) 
                             __INIT_STATE
                         )
                         
-                        repo_update_product_stock(productStockData, client, session)
-                        repo_create_product_item(product_order_item_data, client, session)
+                        repo_update_product_stock(productStockData, session)
+                        repo_create_product_item(product_order_item_data, session)
                         
                         session.commit_transaction()
                         session.end_session()

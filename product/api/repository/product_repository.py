@@ -11,30 +11,14 @@ log = logger(__name__)
 RESP_CODES=resp_codes()
 COL_PRODUCT=get_collection_names().get('PRODUCT')
 
-#??remove?
-def repo_update_product(productData:ProductData, client = None, session = None):
-    try:
-        col = get_collection(COL_PRODUCT)
-        db_response = col.update_one(
-            { "code": productData.code},
-            { "$set":{"stock": productData.stock, "version": productData.version}},
-            session=session
-        )
-        return Repo_Response(RESP_CODES['OK'], None)
-
-    except Exception as e:
-        raise
-
-
-#optional client / session
-def repo_create_product(productData: ProductData, client = None, session = None):
+def repo_create_product(productData: ProductData, session = None) -> Repo_Response:
     try:
         col = get_collection(COL_PRODUCT)
         data = asdict(productData)
         if not data:
             return Repo_Response(RESP_CODES['ERR'], None)
         
-        db_response = col.insert_one(data)
+        db_response = col.insert_one(data, session=session)
         return Repo_Response(RESP_CODES['OK'], {str(db_response.inserted_id)})
     
     except DuplicateKeyError as e:
@@ -43,7 +27,7 @@ def repo_create_product(productData: ProductData, client = None, session = None)
         raise
 
 
-def repo_update_product_desc(productDescData: ProductDescData, client = None, session = None):
+def repo_update_product_desc(productDescData: ProductDescData, session = None) -> Repo_Response:
     try:
         col = get_collection(COL_PRODUCT)
         data = asdict(productDescData)
@@ -56,7 +40,8 @@ def repo_update_product_desc(productDescData: ProductDescData, client = None, se
                     "name": data.get("name"), 
                     "version": data.get("version"),
                     "date_updated": data.get("date_updated")}},
-            upsert=False)
+            upsert=False,
+            session=session)
 
         return Repo_Response(RESP_CODES['OK'], None)
 
@@ -64,7 +49,7 @@ def repo_update_product_desc(productDescData: ProductDescData, client = None, se
         raise
 
 
-def repo_update_product_stock(productStockData: ProductStockData, client = None, session = None):
+def repo_update_product_stock(productStockData: ProductStockData, session = None) -> Repo_Response:
     try:
         col = get_collection(COL_PRODUCT)
         data = asdict(productStockData)
@@ -74,11 +59,13 @@ def repo_update_product_stock(productStockData: ProductStockData, client = None,
                     "stock": data.get("stock"), 
                     "version": data.get("version"),
                     "date_updated": data.get("date_updated")}},
-            upsert=False)
+            upsert=False,
+            session=session)
         return Repo_Response(RESP_CODES['OK'], None)
         
     except Exception as e:
         raise
+
 
 def repo_get_product(code: int) -> Repo_Response:
     try:
@@ -92,6 +79,7 @@ def repo_get_product(code: int) -> Repo_Response:
         return Repo_Response(message=None, data=_to_product(data))
         
     return Repo_Response(message=None, data=None)
+
 
 async def repo_get_async_product(code: int) -> Repo_Response:
     try:

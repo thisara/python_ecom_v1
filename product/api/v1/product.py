@@ -8,6 +8,7 @@ from api.models.product import ProductData, ProductDescData, ClientProductData
 
 from api.utils._message import get_api_response_messages
 from api.utils.resp_codes import resp_codes
+from .utils.data_mapper import to_product_data, to_product_desc_data, to_client_product_data
 from api.utils.app_logger import logger
 
 log = logger(__name__)
@@ -26,9 +27,10 @@ def create_product_endpoint(product: Product):
 
     try:
         prod_code = product.code
-        response = create_product(_to_product_data(product))
+        response = create_product(to_product_data(product))
     except Exception as e:
-        raise #HTTPException(status_code=500, detail=f"Error creating Product code {prod_code} : {e}")
+        log.trace(f"Error creating product : {e}")
+        raise HTTPException(status_code=500, detail=f"Error creating Product code {prod_code} : {e}")
     
     response_code = getattr(response, "message", None)
 
@@ -49,13 +51,13 @@ async def get_product_endpoint(code: int):
     try:
         response = await get_async_product(code)
     except Exception as e:
-        log.error(f"Error fetching Product Code {code} : {e}")
+        log.trace(f"Error fetching Product Code {code} : {e}")
         raise HTTPException(status_code=500, detail=_api_responses['INTERNAL_ERROR']) 
 
     data = getattr(response, "data", None)
 
     if data is not None:
-        return Client_Data_Response(_to_client_product_data(data))
+        return Client_Data_Response(to_client_product_data(data))
 
     log.warning(f"Product {code} not found!")
     raise HTTPException(status_code=404, detail=_api_responses['PRODUCT_NOT_FOUND'])
@@ -69,9 +71,9 @@ def update_product_desc_endpoint(product: Product):
     prod_code = product.code
 
     try:
-        response = update_product_desc(_to_product_desc_data(product))
+        response = update_product_desc(to_product_desc_data(product))
     except Exception as e:
-        log.warning(f"Error updating product : {e}")
+        log.trace(f"Error updating product : {e}")
         raise HTTPException(status_code=500, detail=f"Error updating product code {prod_code}!")
 
     response_code = getattr(response, "message", None)
@@ -84,13 +86,13 @@ def update_product_desc_endpoint(product: Product):
     raise HTTPException(status_code=400, detail=f"{_api_responses['PRODUCT_NOT_UPDATED']}")
 
 
-@router.put("/order/stock", tags=["product item"])
+@router.put("/order/stock", tags=["product stock"])
 def reserve_product_order_stock_endpoint(productOrderItem: ProductOrderItem):
     if productOrderItem is not None:
         try:
             response = create_product_order_item(productOrderItem)
         except Exception as e:
-            log.warning(f"Error reserving product items.")
+            log.trace(f"Error reserving product items.")
             raise HTTPException(status_code=500, detail=f"Error reserving products.")
 
     response_code = getattr(response, "message", None)
@@ -121,7 +123,7 @@ def update_product_stock_endpoint(productStock: ProductStock):
     try:
         response = update_product_stock(productStock)
     except Exception as e:
-        log.warning(f"Error updating product : {e}")
+        log.trace(f"Error updating product : {e}")
         raise HTTPException(status_code=500, detail=f"Error updating product code {prod_code}!")
 
     response_code = getattr(response, "message", None)
@@ -136,43 +138,3 @@ def update_product_stock_endpoint(productStock: ProductStock):
 
     log.warning(f"Product : {productStock} is not updated!")
     raise HTTPException(status_code=400, detail=f"{_api_responses['PRODUCT_NOT_UPDATED']}")
-
-#--
-
-def _to_product_data(product: Product) -> ProductData:
-    if not product:
-        return None
-
-    return ProductData(
-        code=product.code,
-        name=product.name,
-        stock=_get_object_attr(product, 'stock'),
-        version=_get_object_attr(product, 'version')
-    )
-
-def _to_product_desc_data(product: Product) -> ProductData:
-    if not product:
-        return None
-
-    return ProductDescData(
-        code=product.code,
-        name=product.name,
-        version=_get_object_attr(product, 'version')
-    )
-
-def _to_client_product_data(data: ProductData):
-    if not data:
-        return None
-    
-    return ClientProductData(
-        code=data.code,
-        name=data.name,
-        stock=data.stock,
-        version=data.version
-    )
-
-def _get_object_attr(object, value):
-    if hasattr(object, value):
-        return object.value
-    else:
-        return None
