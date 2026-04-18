@@ -4,6 +4,7 @@ from api.repository.product_repository import repo_create_product, repo_update_p
 from api.utils.resp_codes import resp_codes
 from datetime import datetime, timezone
 from api.utils.app_logger import logger
+from typing import Callable
 
 log = logger(__name__)
 RESP_CODES=resp_codes()
@@ -50,19 +51,22 @@ def create_product(productData: ProductData):
         log.warning(f"Error creating product : {e}")
         raise RuntimeError(e)
     
-def update_product_desc(productDescData: ProductDescData):
+def update_product_desc(
+    productDescData: ProductDescData,
+    get_product_fn: Callable,
+    repo_update_fn: Callable):
     try:
         product_code = productDescData.code
         product_name = productDescData.name
 
-        curr_product = get_product(product_code)
+        curr_product = get_product_fn(product_code)
         
         if curr_product is None:
             log.warning(f"Product code not found {prod_code}!")
             return Service_Response("Product code not found!", None)
 
         source_product = curr_product.get_data()
-        
+        print(f"--------------- {source_product}")
         if source_product is None:
             log.warning(f"Product data not found for {prod_code}!")
             return Service_Response("Product data not found!", None)
@@ -77,7 +81,7 @@ def update_product_desc(productDescData: ProductDescData):
             updated_time
         )
 
-        response = repo_update_product_desc(product_desc_data)
+        response = repo_update_fn(product_desc_data)
 
         if response and response.message == RESP_CODES['OK']:
             return Service_Response(RESP_CODES['OK'], None)

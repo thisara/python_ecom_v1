@@ -99,7 +99,7 @@ async def repo_get_async_product(code: int) -> Repo_Response:
 def _to_product(data: dict) -> ProductData:
     if not data:
         return None
-
+    
     return ProductData(
         code=data.get("code"),
         name=data.get("name"),

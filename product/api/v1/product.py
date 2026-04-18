@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 from api.service.product_service import get_async_product, create_product, update_product_desc, update_product_stock
 from api.service.product_item_service import create_product_order_item
@@ -10,6 +10,8 @@ from api.utils._message import get_api_response_messages
 from api.utils.resp_codes import resp_codes
 from .utils.data_mapper import to_product_data, to_product_desc_data, to_client_product_data
 from api.utils.app_logger import logger
+
+from api.service.product_service_dep import get_product_fetcher, update_product_repo
 
 log = logger(__name__)
 router = APIRouter()
@@ -64,16 +66,22 @@ async def get_product_endpoint(code: int):
     
 
 @router.put("/", tags=["product"])
-def update_product_desc_endpoint(product: Product):
+def update_product_desc_endpoint(
+    product: Product,
+    get_product_fn=Depends(get_product_fetcher),
+    repo_update_fn=Depends(update_product_repo)):
     if product is None:
         raise HTTPException(status_code=400, detail=f"{_api_responses['PRODUCT_NOT_UPDATED']}")
 
     prod_code = product.code
 
     try:
-        response = update_product_desc(to_product_desc_data(product))
+        response = update_product_desc(
+            to_product_desc_data(product),
+            get_product_fn=get_product_fn,
+            repo_update_fn=repo_update_fn)
     except Exception as e:
-        log.trace(f"Error updating product : {e}")
+        log.warning(f"Error updating product : {e}")
         raise HTTPException(status_code=500, detail=f"Error updating product code {prod_code}!")
 
     response_code = getattr(response, "message", None)
@@ -92,7 +100,7 @@ def reserve_product_order_stock_endpoint(productOrderItem: ProductOrderItem):
         try:
             response = create_product_order_item(productOrderItem)
         except Exception as e:
-            log.trace(f"Error reserving product items.")
+            log.warning(f"Error reserving product items.")
             raise HTTPException(status_code=500, detail=f"Error reserving products.")
 
     response_code = getattr(response, "message", None)
@@ -123,7 +131,7 @@ def update_product_stock_endpoint(productStock: ProductStock):
     try:
         response = update_product_stock(productStock)
     except Exception as e:
-        log.trace(f"Error updating product : {e}")
+        log.warning(f"Error updating product : {e}")
         raise HTTPException(status_code=500, detail=f"Error updating product code {prod_code}!")
 
     response_code = getattr(response, "message", None)
