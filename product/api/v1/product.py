@@ -11,7 +11,7 @@ from api.utils.resp_codes import resp_codes
 from .utils.data_mapper import to_product_data, to_product_desc_data, to_client_product_data
 from api.utils.app_logger import logger
 
-from api.service.product_service_dep import get_product_fetcher, update_product_repo
+from api.service.product_service_dep import get_product_fetcher, update_product_repo, create_product_repo, update_product_stock_repo, get_product_async_repo
 
 log = logger(__name__)
 router = APIRouter()
@@ -21,7 +21,10 @@ _mutators = ['ADD', 'REM']
 _api_responses = get_api_response_messages()
 
 @router.post("/", tags=["product"])
-def create_product_endpoint(product: Product):
+def create_product_endpoint(
+    product: Product,
+    get_product_fn=Depends(get_product_fetcher),
+    repo_create_fn=Depends(create_product_repo)):
 
     if product is None:
         log.warning(f"Invalid product data provided.")
@@ -29,9 +32,13 @@ def create_product_endpoint(product: Product):
 
     try:
         prod_code = product.code
-        response = create_product(to_product_data(product))
+        response = create_product(
+            to_product_data(product),
+            get_product_fn=get_product_fn,
+            repo_create_fn=repo_create_fn)
+
     except Exception as e:
-        log.trace(f"Error creating product : {e}")
+        log.warning(f"Error creating product : {e}")
         raise HTTPException(status_code=500, detail=f"Error creating Product code {prod_code} : {e}")
     
     response_code = getattr(response, "message", None)
@@ -49,9 +56,12 @@ def create_product_endpoint(product: Product):
 
 
 @router.get("/{code}", tags=["product"])
-async def get_product_endpoint(code: int):
+async def get_product_endpoint(
+    code: int,
+    get_product_async_fn=Depends(get_product_async_repo)):
+
     try:
-        response = await get_async_product(code)
+        response = await get_product_async_fn(code)
     except Exception as e:
         log.trace(f"Error fetching Product Code {code} : {e}")
         raise HTTPException(status_code=500, detail=_api_responses['INTERNAL_ERROR']) 
@@ -70,6 +80,7 @@ def update_product_desc_endpoint(
     product: Product,
     get_product_fn=Depends(get_product_fetcher),
     repo_update_fn=Depends(update_product_repo)):
+
     if product is None:
         raise HTTPException(status_code=400, detail=f"{_api_responses['PRODUCT_NOT_UPDATED']}")
 
@@ -80,6 +91,7 @@ def update_product_desc_endpoint(
             to_product_desc_data(product),
             get_product_fn=get_product_fn,
             repo_update_fn=repo_update_fn)
+
     except Exception as e:
         log.warning(f"Error updating product : {e}")
         raise HTTPException(status_code=500, detail=f"Error updating product code {prod_code}!")
@@ -122,14 +134,22 @@ def reserve_product_order_stock_endpoint(productOrderItem: ProductOrderItem):
         
 
 @router.put("/stock", tags=["product stock"])
-def update_product_stock_endpoint(productStock: ProductStock):
+def update_product_stock_endpoint(
+    productStock: ProductStock,
+    get_product_fn=Depends(get_product_fetcher),
+    repo_update_stock_fn=Depends(update_product_stock_repo)):
+
     if productStock is None or productStock.mutator not in _mutators:
         raise HTTPException(status_code=400, detail=f"{_api_responses['PRODUCT_NOT_UPDATED']}")
         
     prod_code = productStock.code
 
     try:
-        response = update_product_stock(productStock)
+        response = update_product_stock(
+            productStock,
+            get_product_fn=get_product_fn,
+            repo_update_stock_fn=repo_update_stock_fn)
+
     except Exception as e:
         log.warning(f"Error updating product : {e}")
         raise HTTPException(status_code=500, detail=f"Error updating product code {prod_code}!")

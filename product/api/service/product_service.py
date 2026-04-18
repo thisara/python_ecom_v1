@@ -18,12 +18,16 @@ def __id_serialiser(object)-> dict:
     del object["_id"]
     return object
 
-def create_product(productData: ProductData):
+def create_product(
+    productData: ProductData,
+    get_product_fn: Callable,
+    repo_create_fn: Callable):
+
     curr_product: ProductData = None
     try:
         if productData and productData.code is not None:
             prod_code = productData.code
-            curr_product = get_product(prod_code)
+            curr_product = get_product_fn(prod_code)
         print(curr_product)
         if curr_product and curr_product.data is not None:
             return Service_Response(RESP_CODES['DUP'], None)
@@ -40,7 +44,7 @@ def create_product(productData: ProductData):
             __INIT_STATE
         )
         
-        response = repo_create_product(product_data)
+        response = repo_create_fn(product_data)
 
         if response and response.message == RESP_CODES['OK']:
             return Service_Response(RESP_CODES['OK'], None)
@@ -66,7 +70,7 @@ def update_product_desc(
             return Service_Response("Product code not found!", None)
 
         source_product = curr_product.get_data()
-        print(f"--------------- {source_product}")
+
         if source_product is None:
             log.warning(f"Product data not found for {prod_code}!")
             return Service_Response("Product data not found!", None)
@@ -93,12 +97,16 @@ def update_product_desc(
         raise e
     
     
-def update_product_stock(productStock: ProductStock):
+def update_product_stock(
+    productStock: ProductStock,
+    get_product_fn: Callable,
+    repo_update_stock_fn: Callable):
+
     try:
         prod_code = productStock.code
         new_prod_stock = float(productStock.stock)
 
-        curr_product = get_product(prod_code)
+        curr_product = get_product_fn(prod_code)
 
         if curr_product is None:
             log.warning(f"Product code not found {prod_code}!")
@@ -133,7 +141,7 @@ def update_product_stock(productStock: ProductStock):
                 updated_time
             )
 
-            response = repo_update_product_stock(product_stock_data)
+            response = repo_update_stock_fn(product_stock_data)
 
             return Service_Response(response.message, None)
 
@@ -143,9 +151,13 @@ def update_product_stock(productStock: ProductStock):
         log.warning(f"Error updating product : {e}")
         raise e
     
-def get_product(code: int) -> Service_Response:
+
+async def get_async_product(
+    code: int,
+    get_product_async_fn: Callable) -> Service_Response:
+
     try:
-        response: Repo_Response = repo_get_product(code)
+        response: Repo_Response = await get_product_async_fn(code)
         product_data = response.get_all() or {}
         resp_data = product_data.get("data")
     except Exception as e:
@@ -157,9 +169,10 @@ def get_product(code: int) -> Service_Response:
     
     return Service_Response(message=None, data=None)
 
-async def get_async_product(code: int) -> Service_Response:
+
+def get_product(code: int) -> Service_Response:
     try:
-        response: Repo_Response = await repo_get_async_product(code)
+        response: Repo_Response = repo_get_product(code)
         product_data = response.get_all() or {}
         resp_data = product_data.get("data")
     except Exception as e:
