@@ -1,28 +1,78 @@
-from api.dto.product import Service_Response
-from api.service.product_service import update_product_desc
+from api.dto.product import ProductStock
+from api.service.product_service import update_product_desc,create_product,update_product_stock,get_async_product
 from api.models.product import ProductDescData, ProductData
 from api.utils.resp_codes import resp_codes
+from .mocks.product import fake_get_product,fake_async_get_product,fake_get_empty_product,fake_update_product_desc,fake_update_empty_product_desc,fake_update_product_stock,fake_update_empty_product_stock,fake_create_product
 
 RESP_CODES=resp_codes()
 
-#ProductData(code=1016, name='Machien', stock=38.0, version=96, date_created=None, date_updated=None, is_active=True)
+def test_create_product_success():
 
-def fake_get_product(code):
-    prodData = ProductData(code=str(1016),
-                name='Machien',
-                stock=38.0,
-                version=93)
-    return Service_Response(message=None, data=prodData)
+    result = create_product(
+        productData=ProductData("1087", "Test Product 3", None, None),
+        get_product_fn=fake_get_empty_product,
+        repo_create_fn=fake_create_product
+    )
+    assert result.message == RESP_CODES['OK']
 
-def fake_update_product(data):
-    return Service_Response(RESP_CODES['OK'], None)
+def test_create_product_exist():
+
+    result = create_product(
+        productData=ProductData(code=1087, name="Test Product 3", stock=None, version=None),
+        get_product_fn=fake_get_product,
+        repo_create_fn=fake_create_product
+    )
+    assert result.message == RESP_CODES['DUP']
 
 def test_update_product_desc_success():
 
     result = update_product_desc(
-        productDescData=ProductDescData("1016", "Machien", 93),
+        productDescData=ProductDescData(code=1001, name="Test Product 2", version=93),
         get_product_fn=fake_get_product,
-        repo_update_fn=fake_update_product
+        repo_update_fn=fake_update_product_desc
     )
-
     assert result.message == RESP_CODES['OK']
+
+def test_update_product_desc_no_product():
+
+    result = update_product_desc(
+        productDescData=ProductDescData(code=1001, name="Test Product 2", version=93),
+        get_product_fn=fake_get_empty_product,
+        repo_update_fn=fake_update_empty_product_desc
+    )
+    assert result.message == RESP_CODES['NO_PROD_DATA']
+
+def test_update_product_stock_success():
+
+    result = update_product_stock(
+        productStock=ProductStock(code=1001, stock=10, mutator="ADD"),
+        get_product_fn=fake_get_product,
+        repo_update_stock_fn=fake_update_product_stock
+    )
+    assert result.message == RESP_CODES['OK']
+
+def test_update_product_stock_no_product_data():
+
+    result = update_product_stock(
+        productStock=ProductStock(code=1001, stock=10, mutator="ADD"),
+        get_product_fn=fake_get_empty_product,
+        repo_update_stock_fn=fake_update_empty_product_stock
+    )
+    assert result.message == RESP_CODES['NO_PROD_DATA']
+
+def test_update_product_stock_invalid_mutator():
+
+    result = update_product_stock(
+        productStock=ProductStock(code=1001, stock=10, mutator="ADDS"),
+        get_product_fn=fake_get_product,
+        repo_update_stock_fn=fake_update_empty_product_stock
+    )
+    assert result.message == RESP_CODES['ERR']
+
+async def test_get_async_product_success():
+
+    result = await get_async_product(
+        1001,
+        get_product_async_fn=fake_async_get_product
+    )
+    assert result.data != None

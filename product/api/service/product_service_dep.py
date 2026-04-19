@@ -8,7 +8,6 @@ def get_product_fetcher():
 def update_product_repo():
     return repo_update_product_desc
 
-
 def create_product_repo():
     return repo_create_product
 

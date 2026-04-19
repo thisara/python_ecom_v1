@@ -1,6 +1,6 @@
 from api.models.product import ProductData, ProductDescData, ProductStockData
 from api.dto.product import Product, ProductOrderItem, ProductStock, Service_Response
-from api.repository.product_repository import repo_create_product, repo_update_product_desc, repo_update_product_stock, repo_get_product, repo_get_async_product
+from api.repository.product_repository import repo_get_product
 from api.utils.resp_codes import resp_codes
 from datetime import datetime, timezone
 from api.utils.app_logger import logger
@@ -59,21 +59,23 @@ def update_product_desc(
     productDescData: ProductDescData,
     get_product_fn: Callable,
     repo_update_fn: Callable):
+
     try:
         product_code = productDescData.code
         product_name = productDescData.name
 
         curr_product = get_product_fn(product_code)
         
+        #Always return Service_Response object
         if curr_product is None:
-            log.warning(f"Product code not found {prod_code}!")
-            return Service_Response("Product code not found!", None)
+            log.warning(f"Product code not found {product_code}!")
+            return Service_Response(RESP_CODES['NO_PROD'], None)
 
         source_product = curr_product.get_data()
 
         if source_product is None:
-            log.warning(f"Product data not found for {prod_code}!")
-            return Service_Response("Product data not found!", None)
+            log.warning(f"Product data not found for {product_code}!")
+            return Service_Response(RESP_CODES['NO_PROD_DATA'], None)
         
         product_version = source_product.version + 1
         updated_time = datetime.now(timezone.utc)
@@ -108,15 +110,16 @@ def update_product_stock(
 
         curr_product = get_product_fn(prod_code)
 
+        #Always return Service_Response object
         if curr_product is None:
             log.warning(f"Product code not found {prod_code}!")
-            return Service_Response("Product code not found!", None)
+            return Service_Response(RESP_CODES['NO_PROD'], None)
 
         source_product = curr_product.get_data()
     
         if source_product is None:
             log.warning(f"Product data not found for {prod_code}!")
-            return Service_Response("Product data not found!", None)
+            return Service_Response(RESP_CODES['NO_PROD_DATA'], None)
 
         source_product_version = source_product.version
         new_product_version = source_product_version + 1

@@ -63,7 +63,7 @@ async def get_product_endpoint(
     try:
         response = await get_product_async_fn(code)
     except Exception as e:
-        log.trace(f"Error fetching Product Code {code} : {e}")
+        log.warning(f"Error fetching Product Code {code} : {e}")
         raise HTTPException(status_code=500, detail=_api_responses['INTERNAL_ERROR']) 
 
     data = getattr(response, "data", None)
@@ -73,7 +73,7 @@ async def get_product_endpoint(
 
     log.warning(f"Product {code} not found!")
     raise HTTPException(status_code=404, detail=_api_responses['PRODUCT_NOT_FOUND'])
-    
+
 
 @router.put("/", tags=["product"])
 def update_product_desc_endpoint(
