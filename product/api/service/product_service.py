@@ -2,16 +2,15 @@ from api.models.product import ProductData, ProductDescData, ProductStockData
 from api.dto.product import Product, ProductOrderItem, ProductStock, Service_Response
 from api.repository.product_repository import repo_get_product
 from api.utils.resp_codes import resp_codes
+from api.utils.message import get_mutators
 from datetime import datetime, timezone
 from api.utils.app_logger import logger
 from typing import Callable
+from api.utils.constants import INIT_VERSION, INIT_STOCK, INIT_STATE
 
 log = logger(__name__)
 RESP_CODES=resp_codes()
-_mutators = ['ADD', 'REM']
-__INIT_VERSION = 0
-__INIT_STOCK = 0
-__INIT_STATE = 'active' #move to conf, reuse in uow
+mutators = get_mutators()
 
 def __id_serialiser(object)-> dict:
     #object["id"] = str(object["_id"])
@@ -37,11 +36,11 @@ def create_product(
         product_data = ProductData(
             productData.code, 
             productData.name, 
-            __INIT_STOCK, 
-            __INIT_VERSION,
+            INIT_STOCK, 
+            INIT_VERSION,
             record_time,
             record_time,
-            __INIT_STATE
+            INIT_STATE
         )
         
         response = repo_create_fn(product_data)
@@ -126,7 +125,7 @@ def update_product_stock(
         source_stock = float(source_product.stock)
         updated_time = datetime.now(timezone.utc)
 
-        if productStock.mutator in _mutators:
+        if productStock.mutator in mutators:
 
             updated_stock = 0
 

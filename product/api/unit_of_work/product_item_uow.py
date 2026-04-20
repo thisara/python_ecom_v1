@@ -1,30 +1,33 @@
 from api.utils.db_tools import get_collection, get_client
+from api.utils.app_logger import logger
+from api.utils.resp_codes import resp_codes
+from api.utils.constants import INIT_STATE
 
-from api.models.product import ProductStockData, ProductOderItemData
+from api.models.product import ProductData, ProductStockData, ProductOderItemData
 from api.dto.product import Product, ProductOrderItem, Repo_Response
 
 from api.repository.product_item_repository import repo_create_product_item
 from api.repository.product_repository import repo_update_product_stock
-from api.utils._message import get_global_messages
-from api.utils.app_logger import logger
-from api.utils.resp_codes import resp_codes
+
 from datetime import datetime, timezone
+from typing import Callable
 
 RESP_CODES=resp_codes()
 log = logger(__name__)
-__INIT_STATE = 'active'
 
-def product_order_reservation(product: Product, prod_odr_itm: ProductOrderItem) -> str:
+def product_order_reservation(
+    product_data: ProductData, 
+    prod_odr_itm: ProductOrderItem,
+    repo_update_stock_fn: Callable,
+    repo_update_product_item_fn: Callable) -> Repo_Response:
 
     try:
         client = get_client()
         
-        product_code = product.code
-        product_name = product.name
-        curr_product_version = product.version
-        curr_product_stock = product.stock
-
-        global_messages = get_global_messages()
+        product_code = product_data.code
+        product_name = product_data.name
+        curr_product_version = product_data.version
+        curr_product_stock = product_data.stock
 
         if curr_product_version == prod_odr_itm.version:
             
@@ -51,11 +54,11 @@ def product_order_reservation(product: Product, prod_odr_itm: ProductOrderItem) 
                             new_product_version,
                             tx_time,
                             tx_time,
-                            __INIT_STATE
+                            INIT_STATE
                         )
                         
-                        repo_update_product_stock(productStockData, session)
-                        repo_create_product_item(product_order_item_data, session)
+                        repo_update_stock_fn(productStockData, session)
+                        repo_update_product_item_fn(product_order_item_data, session)
                         
                         session.commit_transaction()
                         session.end_session()
