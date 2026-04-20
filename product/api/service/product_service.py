@@ -1,111 +1,188 @@
-import json
-from pymongo import MongoClient
-from pymongo.collection import Collection
+from typing import Callable
+from datetime import datetime, timezone
 
-from api.models.product import ProductData
+from api.models.product import ProductData, ProductDescData, ProductStockData
+from api.dto.product import Product, ProductOrderItem, ProductStock, Service_Response
+from api.repository.product_repository import repo_get_product
+from api.utils.resp_codes import resp_codes
+from api.utils.message import get_mutators
+from api.utils.app_logger import logger
+from api.utils.constants import INIT_VERSION, INIT_STOCK, INIT_STATE
 
-from api.dto.product import Product, ProductOrderItem, ProductStock, ProductResponse
-
-from collections import namedtuple
-from json import JSONEncoder
-
-MONGO_URL = "mongodb://127.0.0.1:27017/?replicaSet=rs01"
-DB_NAME = "order_db"
-COLLECTION_NAME = "product"
-
-__INIT_VERSION = 0
-__INIT_STOCK = 0
-
-def __get_db_conn() -> Collection:
-    client = MongoClient(MONGO_URL)
-    db = client[DB_NAME]
-    col = db[COLLECTION_NAME]
-    return col
-
+log = logger(__name__)
+RESP_CODES=resp_codes()
+mutators = get_mutators()
 
 def __id_serialiser(object)-> dict:
     #object["id"] = str(object["_id"])
     del object["_id"]
     return object
 
+def create_product(
+    productData: ProductData,
+    get_product_fn: Callable,
+    repo_create_fn: Callable):
 
-def create_product(product: Product):
-    response_message = ""
+    curr_product: ProductData = None
     try:
-        prod_col = __get_db_conn()
-        product_data = ProductData(product.code, product.name, __INIT_STOCK, __INIT_VERSION)
-        prod_col.insert_one(product_data.__dict__)
-        response_message = "Product created successfully."
+        if productData and productData.code is not None:
+            prod_code = productData.code
+            curr_product = get_product_fn(prod_code)
+        print(curr_product)
+        if curr_product and curr_product.data is not None:
+            return Service_Response(RESP_CODES['DUP'], None)
+
+        record_time = datetime.now(timezone.utc)
+
+        product_data = ProductData(
+            productData.code, 
+            productData.name, 
+            INIT_STOCK, 
+            INIT_VERSION,
+            record_time,
+            record_time,
+            INIT_STATE
+        )
+        
+        response = repo_create_fn(product_data)
+
+        if response and response.message == RESP_CODES['OK']:
+            return Service_Response(RESP_CODES['OK'], None)
+        
+        return Service_Response(RESP_CODES['ERR'], None)
+
     except Exception as e:
-        response_message = "Error creating product."
-    return ProductResponse(response_message)
+        log.warning(f"Error creating product : {e}")
+        raise RuntimeError(e)
+    
+def update_product_desc(
+    productDescData: ProductDescData,
+    get_product_fn: Callable,
+    repo_update_fn: Callable):
 
-
-def update_product(product: Product):
-    response_message = ""
     try:
-        prod_col = __get_db_conn()
-        product_code = product.code
-        source_product = get_product(product_code)
-        if source_product != None:
-            prod_col.update_one(
-                { "code": source_product["code"]},
-                { "$set":{"name": product.name}}
+        product_code = productDescData.code
+        product_name = productDescData.name
+
+        curr_product = get_product_fn(product_code)
+        
+        #Always return Service_Response object
+        if curr_product is None:
+            log.warning(f"Product code not found {product_code}!")
+            return Service_Response(RESP_CODES['NO_PROD'], None)
+
+        source_product = curr_product.get_data()
+
+        if source_product is None:
+            log.warning(f"Product data not found for {product_code}!")
+            return Service_Response(RESP_CODES['NO_PROD_DATA'], None)
+        
+        product_version = source_product.version + 1
+        updated_time = datetime.now(timezone.utc)
+
+        product_desc_data = ProductDescData(
+            product_code, 
+            product_name, 
+            product_version,
+            updated_time
+        )
+
+        response = repo_update_fn(product_desc_data)
+
+        if response and response.message == RESP_CODES['OK']:
+            return Service_Response(RESP_CODES['OK'], None)
+
+        return Service_Response(RESP_CODES['ERR'], None)
+        
+    except Exception as e:
+        log.warning(f"Error updating product : {e}")
+        raise e
+    
+    
+def update_product_stock(
+    productStock: ProductStock,
+    get_product_fn: Callable,
+    repo_update_stock_fn: Callable):
+
+    try:
+        prod_code = productStock.code
+        new_prod_stock = float(productStock.stock)
+
+        curr_product = get_product_fn(prod_code)
+
+        #Always return Service_Response object
+        if curr_product is None:
+            log.warning(f"Product code not found {prod_code}!")
+            return Service_Response(RESP_CODES['NO_PROD'], None)
+
+        source_product = curr_product.get_data()
+    
+        if source_product is None:
+            log.warning(f"Product data not found for {prod_code}!")
+            return Service_Response(RESP_CODES['NO_PROD_DATA'], None)
+
+        source_product_version = source_product.version
+        new_product_version = source_product_version + 1
+        source_stock = float(source_product.stock)
+        updated_time = datetime.now(timezone.utc)
+
+        if productStock.mutator in mutators:
+
+            updated_stock = 0
+
+            if productStock.mutator == 'ADD':
+                updated_stock = source_stock + new_prod_stock
+            elif productStock.mutator == 'REM' and source_stock >= new_prod_stock:
+                updated_stock = source_stock - new_prod_stock
+            else:
+                return Service_Response(RESP_CODES['LOW'], None)
+
+            product_stock_data = ProductStockData(
+                prod_code, 
+                updated_stock, 
+                new_product_version,
+                updated_time
             )
-            response_message = "Product updated successfully."
-        else:
-            response_message = "No Product code found."
-    except:
-        response_message = "Error fetching product."
+
+            response = repo_update_stock_fn(product_stock_data)
+
+            return Service_Response(response.message, None)
+
+        return Service_Response(RESP_CODES['ERR'], None)
+        
+    except Exception as e:
+        log.warning(f"Error updating product : {e}")
+        raise e
     
-    return response_message
 
+async def get_async_product(
+    code: int,
+    get_product_async_fn: Callable) -> Service_Response:
 
-def update_product_stock(productStock: ProductStock):
-    response_message = ""
-    prod_col = __get_db_conn()
-    source_product = get_product(productStock.code)
-    
-    source_product_version = source_product['version']
-    new_product_version = source_product_version + 1
-
-    source_stock = source_product['stock']
-    updated_stock = 0
-
-    if productStock.mutator == 'ADD':
-        updated_stock = source_stock + productStock.stock
-    elif productStock.mutator == 'REM' and source_stock > productStock.stock:
-        updated_stock = source_stock - productStock.stock
-    else:
-        updated_stock = source_stock
-    
-    prod_col.update_one(
-        { "code": source_product["code"]},
-        { "$set":{"stock": updated_stock, "version": new_product_version}}
-    )
-    response_message = "Product stock updated successfully."
-    return ProductResponse(response_message)
-
-def get_product(code: int):
     try:
-        prod_col = __get_db_conn()
-        product = prod_col.find_one({"code": code})
+        response: Repo_Response = await get_product_async_fn(code)
+        product_data = response.get_all() or {}
+        resp_data = product_data.get("data")
+    except Exception as e:
+        log.error(f"Error in retrieving record for {code} : {e}")
+        raise e
 
-        if product != None:
-            return __id_serialiser(product)
-        else:
-            return None
-    except:
-        return None
+    if resp_data is not None:
+        return Service_Response(message=None, data=resp_data)
+    
+    return Service_Response(message=None, data=None)
 
 
-#def __jsonDecoder(_dict):
-#    return namedtuple('X', _dict.keys())(*_dict.values())
+def get_product(code: int) -> Service_Response:
+    try:
+        response: Repo_Response = repo_get_product(code)
+        product_data = response.get_all() or {}
+        resp_data = product_data.get("data")
+    except Exception as e:
+        log.error(f"Error in retrieving record for {code} : {e}")
+        raise e
 
-#def __toProductData(product: Product, version):
-#    _product_data = ProductData(product['code'], product['name'], product['stock'], version)
-#    return _product_data
-
-#def __toProduct(product: Product):
-#    _product = ProductData(product['code'], product['name'])
-#    return _product
+    if resp_data is not None:
+        return Service_Response(message=None, data=resp_data)
+    
+    return Service_Response(message=None, data=None)

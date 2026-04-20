@@ -1,11 +1,25 @@
-from api.utils._db_client import get_mongo_client, get_db_conn 
+from api.utils.db_tools import get_collection, get_collection_names
 from api.models.product import ProductOderItemData
+from api.dto.product import Repo_Response
+from dataclasses import asdict
+from api.utils.app_logger import logger
 
-client = get_mongo_client()
-db = get_db_conn(client)
-COL_PRODUCT_ITEM="product_order_item"
+log = logger(__name__)
+COL_PRODUCT_ITEM=get_collection_names().get('PRODUCT_ITEM')
 
-def create_product_item(product_order_item_data:ProductOderItemData, session):
-    col = db[COL_PRODUCT_ITEM]
-    result = col.insert_one(product_order_item_data.__dict__, session=session)
-    return result
+def repo_create_product_item(prodcutOrderItemData:ProductOderItemData, session = None) -> Repo_Response:
+    try:
+        col = get_collection(COL_PRODUCT_ITEM)
+        data = asdict(prodcutOrderItemData)
+
+        if not data:
+            log.warning("Error in data!")
+            return Repo_Response("Error in item data", {})
+ 
+        db_response = col.insert_one(data, session=session)
+        log.info("Added successfully!")
+        return Repo_Response("Added successfully", {str(db_response.inserted_id)})
+    
+    except Exception as e:
+        log.warning("Error creating product item!")
+        raise

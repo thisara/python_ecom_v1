@@ -1,16 +1,38 @@
-from api.utils._response import Client_Response
+from api.dto.product import Service_Response, Repo_Response
 from api.dto.product import ProductOrderItem
 
 from api.unit_of_work.product_item_uow import product_order_reservation
 from api.service.product_service import get_product
+from api.utils.resp_codes import resp_codes
+from typing import Callable
 
-def create_product_order_item(productOrderItem: ProductOrderItem) -> Client_Response:
+RESP_CODES=resp_codes()
 
-    response_message = ""
-    source_product = get_product(productOrderItem.code)
+def create_product_order_item(
+    productOrderItem: ProductOrderItem,
+    get_product_fn: Callable,
+    repo_update_stock_fn: Callable,
+    repo_update_product_item_fn: Callable) -> Service_Response:
 
-    if source_product != None:
-        
-        response_message = product_order_reservation(source_product, productOrderItem)
+    product_code = productOrderItem.code
+    curr_product = get_product_fn(product_code)
 
-    return Client_Response(response_message, {})
+    if curr_product is None:
+        log.warning(f"Product code not found {prod_code}!")
+        return Service_Response("Product code not found!", None)
+
+    source_product = curr_product.get_data()
+    
+    if source_product is None:
+        log.warning(f"Product data not found for {prod_code}!")
+        return Service_Response(RESP_CODES['NO_PROD_DATA'], None)
+
+    if source_product.stock >= productOrderItem.stock:
+        response = product_order_reservation(
+            source_product, 
+            productOrderItem,
+            repo_update_stock_fn,
+            repo_update_product_item_fn)
+        return Service_Response(response.message, None)
+
+    return Service_Response(RESP_CODES['LOW'], None)

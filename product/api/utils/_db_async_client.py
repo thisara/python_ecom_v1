@@ -1,18 +1,16 @@
 import configparser
-from pymongo import MongoClient
-from pymongo.database import Database
-from pymongo.collection import Collection
+from motor.motor_asyncio import AsyncIOMotorClient
 from threading import Lock
 from api.utils.app_logger import logger
 
 log = logger(__name__)
 CONFIG_FILE="config.ini"
 
-class DBConnection:
+class AsyncDBConnection:
     _instance = None
     _lock = Lock()
 
-    def __new__(cls, client: MongoClient = None, config_file: str = CONFIG_FILE):
+    def __new__(cls, config_file: str = CONFIG_FILE):
         if not cls._instance:
             log.info(f"Start creating a new database client.")
             
@@ -32,7 +30,7 @@ class DBConnection:
                     cls._instance = super().__new__(cls)
 
                     try:
-                        cls._instance._client = MongoClient(_config.db_url)
+                        cls._instance._client = AsyncIOMotorClient(_config.db_url)
                         cls._instance._db = cls._instance._client[_config.db_name]
                     except PyMongoError as e:
                         log.error(f"Failed to connect to DB: {e}")
