@@ -1,8 +1,9 @@
 import configparser
+from pathlib import Path
 
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 config = configparser.ConfigParser()
-config.read("config.ini")
-
+config.read(f"{BASE_DIR}/config.ini")
 conf_messages = config["messages"]
 conf_api_massages = config["api-response-messages"]
 
@@ -27,3 +28,4 @@ def get_api_response_messages() -> dict:
 
 def get_mutators():
     return ['ADD', 'REM']
+    

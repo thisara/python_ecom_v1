@@ -1,3 +1,6 @@
+from typing import Callable
+from datetime import datetime, timezone
+
 from api.utils.db_tools import get_collection, get_client
 from api.utils.app_logger import logger
 from api.utils.resp_codes import resp_codes
@@ -8,9 +11,6 @@ from api.dto.product import Product, ProductOrderItem, Repo_Response
 
 from api.repository.product_item_repository import repo_create_product_item
 from api.repository.product_repository import repo_update_product_stock
-
-from datetime import datetime, timezone
-from typing import Callable
 
 RESP_CODES=resp_codes()
 log = logger(__name__)

@@ -1,11 +1,12 @@
+from typing import Callable
+from datetime import datetime, timezone
+
 from api.models.product import ProductData, ProductDescData, ProductStockData
 from api.dto.product import Product, ProductOrderItem, ProductStock, Service_Response
 from api.repository.product_repository import repo_get_product
 from api.utils.resp_codes import resp_codes
 from api.utils.message import get_mutators
-from datetime import datetime, timezone
 from api.utils.app_logger import logger
-from typing import Callable
 from api.utils.constants import INIT_VERSION, INIT_STOCK, INIT_STATE
 
 log = logger(__name__)

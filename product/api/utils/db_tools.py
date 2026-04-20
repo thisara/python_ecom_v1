@@ -31,3 +31,4 @@ def get_async_client():
 def get_async_collection(col_name):
     db = AsyncDBConnection()
     return db._get_collection(col_name)
+    

@@ -27,10 +27,6 @@ def create_product_endpoint(
     get_product_fn=Depends(get_product_dep),
     repo_create_fn=Depends(create_product_dep)):
 
-    if product is None:
-        log.warning(f"Invalid product data provided.")
-        return Client_Message_Response(api_responses['INVALID_PRODUCT_DATA'])
-
     try:
         prod_code = product.code
         response = create_product(
@@ -44,11 +40,11 @@ def create_product_endpoint(
     
     response_code = getattr(response, "message", None)
 
-    if response_code is not None and response_code == RESP_CODES['OK']:
+    if response_code == RESP_CODES['OK']:
         log.info(f"{prod_code} {api_responses['PRODUCT_CREATED']}")
         return Client_Message_Response(f"{prod_code} {api_responses['PRODUCT_CREATED']}")
     
-    if response_code is not None and response_code == RESP_CODES['DUP']:
+    if response_code == RESP_CODES['DUP']:
         log.info(f"{prod_code} {api_responses['PRODUCT_EXIST']}")
         raise HTTPException(status_code=409, detail=f"{prod_code} {api_responses['PRODUCT_EXIST']}")
     
@@ -82,9 +78,6 @@ def update_product_desc_endpoint(
     get_product_fn=Depends(get_product_dep),
     repo_update_fn=Depends(update_product_dep)):
 
-    if product is None:
-        raise HTTPException(status_code=400, detail=f"{api_responses['PRODUCT_NOT_UPDATED']}")
-
     prod_code = product.code
 
     try:
@@ -99,7 +92,7 @@ def update_product_desc_endpoint(
 
     response_code = getattr(response, "message", None)
 
-    if response_code is not None and response_code == RESP_CODES['OK']:
+    if response_code == RESP_CODES['OK']:
         log.info(f"Product code : {prod_code} is updated!")
         return Client_Message_Response(f"{prod_code} {api_responses['PRODUCT_UPDATED']}")
     
@@ -113,28 +106,28 @@ def reserve_product_order_stock_endpoint(
     get_product_fn=Depends(get_product_dep),
     repo_update_stock_fn=Depends(update_product_stock_dep),
     repo_update_product_item_fn=Depends(update_product_item_stock_dep)):
-    if productOrderItem is not None:
-        try:
-            response = create_product_order_item(
-                productOrderItem,
-                get_product_fn=get_product_fn,
-                repo_update_stock_fn=repo_update_stock_fn,
-                repo_update_product_item_fn=repo_update_product_item_fn)
-        except Exception as e:
-            log.warning(f"Error reserving product items.")
-            raise HTTPException(status_code=500, detail=f"Error reserving products.")
+
+    try:
+        response = create_product_order_item(
+            productOrderItem,
+            get_product_fn=get_product_fn,
+            repo_update_stock_fn=repo_update_stock_fn,
+            repo_update_product_item_fn=repo_update_product_item_fn)
+    except Exception as e:
+        log.warning(f"Error reserving product items.")
+        raise HTTPException(status_code=500, detail=f"Error reserving products.")
 
     response_code = getattr(response, "message", None)
 
-    if response_code is not None and response_code == RESP_CODES['OK']:
+    if response_code == RESP_CODES['OK']:
         log.info(f"Product reserved successfully for product code : {productOrderItem.code}")
         return Client_Message_Response(f"{productOrderItem.code} {api_responses['PRODUCT_RESERVED']}")
 
-    if response_code is not None and response_code == RESP_CODES['LOW']:
+    if response_code == RESP_CODES['LOW']:
         log.info(f"Low product stock available for product code : {productOrderItem.code}")
         return Client_Message_Response(f"{productOrderItem.code} {api_responses['PRODUCT_LOW_STOCK']}")
 
-    if response_code is not None and response_code == RESP_CODES['VER']:
+    if response_code == RESP_CODES['VER']:
         log.warning(f"Update requested on stale version of product code : {productOrderItem.code}")
         return Client_Message_Response(f"{productOrderItem.code} {api_responses['PRODUCT_VER_INCORRECT']}")
 
@@ -148,7 +141,7 @@ def update_product_stock_endpoint(
     get_product_fn=Depends(get_product_dep),
     repo_update_stock_fn=Depends(update_product_stock_dep)):
 
-    if productStock is None or productStock.mutator not in mutators:
+    if productStock.mutator not in mutators:
         raise HTTPException(status_code=400, detail=f"{api_responses['PRODUCT_NOT_UPDATED']}")
         
     prod_code = productStock.code
@@ -165,11 +158,11 @@ def update_product_stock_endpoint(
 
     response_code = getattr(response, "message", None)
 
-    if response is not None and response_code == RESP_CODES['OK']:
+    if response_code == RESP_CODES['OK']:
         log.info(f"Product code : {prod_code} is updated!")
         return Client_Message_Response(f"{prod_code} {api_responses['PRODUCT_UPDATED']}")
     
-    if response is not None and response_code == RESP_CODES['LOW']:
+    if response_code == RESP_CODES['LOW']:
         log.info(f"Product code : {prod_code} has low stock!")
         return Client_Message_Response(f"{prod_code} {api_responses['PRODUCT_LOW_STOCK']}")
 
