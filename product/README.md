@@ -1,0 +1,6 @@
+- Product micro-service
+- Dependency management
+- Transaction management
+- Unit of Work for stock updates
+- Repository pattern for persistence
+- Fully functional except for data models
