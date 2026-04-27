@@ -1,15 +1,6 @@
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, field_validator, validator
-import service
+from fastapi import FastAPI
+from api.v1.router import api_router
 
 app = FastAPI()
 
-class Order(BaseModel):
-    order_number: str
-    product: dict
-    user: str
-
-@app.post("/order")
-
-
-@app.get("/order/{id}")
+app.include_router(api_router, prefix="/order")

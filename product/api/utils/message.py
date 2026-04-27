@@ -10,6 +10,9 @@ conf_api_massages = config["api-response-messages"]
 global_message_keys = None
 api_message_keys = None
 
+ADD="ADD"
+REM="REM"
+
 def get_global_messages() -> dict:
     messages: dict = {}
 
@@ -27,5 +30,5 @@ def get_api_response_messages() -> dict:
     return messages
 
 def get_mutators():
-    return ['ADD', 'REM']
+    return [ADD, REM]
     

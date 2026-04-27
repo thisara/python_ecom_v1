@@ -4,8 +4,8 @@ from datetime import datetime, timezone
 from api.models.product import ProductData, ProductDescData, ProductStockData
 from api.dto.product import Product, ProductOrderItem, ProductStock, Service_Response
 from api.repository.product_repository import repo_get_product
-from api.utils.resp_codes import resp_codes
-from api.utils.message import get_mutators
+from api.utils.resp_codes import resp_codes, OK, ERR, DUP, NO_PROD, NO_PROD_DATA, LOW
+from api.utils.message import get_mutators, ADD, REM
 from api.utils.app_logger import logger
 from api.utils.constants import INIT_VERSION, INIT_STOCK, INIT_STATE
 
@@ -28,9 +28,9 @@ def create_product(
         if productData and productData.code is not None:
             prod_code = productData.code
             curr_product = get_product_fn(prod_code)
-        print(curr_product)
+
         if curr_product and curr_product.data is not None:
-            return Service_Response(RESP_CODES['DUP'], None)
+            return Service_Response(message=RESP_CODES[DUP], data=None)
 
         record_time = datetime.now(timezone.utc)
 
@@ -46,10 +46,10 @@ def create_product(
         
         response = repo_create_fn(product_data)
 
-        if response and response.message == RESP_CODES['OK']:
-            return Service_Response(RESP_CODES['OK'], None)
+        if response and response.message == RESP_CODES[OK]:
+            return Service_Response(RESP_CODES[OK], None)
         
-        return Service_Response(RESP_CODES['ERR'], None)
+        return Service_Response(RESP_CODES[ERR], None)
 
     except Exception as e:
         log.warning(f"Error creating product : {e}")
@@ -69,13 +69,13 @@ def update_product_desc(
         #Always return Service_Response object
         if curr_product is None:
             log.warning(f"Product code not found {product_code}!")
-            return Service_Response(RESP_CODES['NO_PROD'], None)
+            return Service_Response(RESP_CODES[NO_PROD], None)
 
         source_product = curr_product.get_data()
 
         if source_product is None:
             log.warning(f"Product data not found for {product_code}!")
-            return Service_Response(RESP_CODES['NO_PROD_DATA'], None)
+            return Service_Response(RESP_CODES[NO_PROD_DATA], None)
         
         product_version = source_product.version + 1
         updated_time = datetime.now(timezone.utc)
@@ -89,10 +89,10 @@ def update_product_desc(
 
         response = repo_update_fn(product_desc_data)
 
-        if response and response.message == RESP_CODES['OK']:
-            return Service_Response(RESP_CODES['OK'], None)
+        if response and response.message == RESP_CODES[OK]:
+            return Service_Response(RESP_CODES[OK], None)
 
-        return Service_Response(RESP_CODES['ERR'], None)
+        return Service_Response(RESP_CODES[ERR], None)
         
     except Exception as e:
         log.warning(f"Error updating product : {e}")
@@ -113,13 +113,13 @@ def update_product_stock(
         #Always return Service_Response object
         if curr_product is None:
             log.warning(f"Product code not found {prod_code}!")
-            return Service_Response(RESP_CODES['NO_PROD'], None)
+            return Service_Response(RESP_CODES[NO_PROD], None)
 
         source_product = curr_product.get_data()
     
         if source_product is None:
             log.warning(f"Product data not found for {prod_code}!")
-            return Service_Response(RESP_CODES['NO_PROD_DATA'], None)
+            return Service_Response(RESP_CODES[NO_PROD_DATA], None)
 
         source_product_version = source_product.version
         new_product_version = source_product_version + 1
@@ -130,12 +130,12 @@ def update_product_stock(
 
             updated_stock = 0
 
-            if productStock.mutator == 'ADD':
+            if productStock.mutator == ADD:
                 updated_stock = source_stock + new_prod_stock
-            elif productStock.mutator == 'REM' and source_stock >= new_prod_stock:
+            elif productStock.mutator == REM and source_stock >= new_prod_stock:
                 updated_stock = source_stock - new_prod_stock
             else:
-                return Service_Response(RESP_CODES['LOW'], None)
+                return Service_Response(RESP_CODES[LOW], None)
 
             product_stock_data = ProductStockData(
                 prod_code, 
@@ -148,7 +148,7 @@ def update_product_stock(
 
             return Service_Response(response.message, None)
 
-        return Service_Response(RESP_CODES['ERR'], None)
+        return Service_Response(RESP_CODES[ERR], None)
         
     except Exception as e:
         log.warning(f"Error updating product : {e}")

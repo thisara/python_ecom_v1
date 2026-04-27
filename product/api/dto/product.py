@@ -79,6 +79,26 @@ class ProductOrderItem(BaseModel):
             raise ValueError("Stock has to be a number!")
         return value
 
+    @field_validator("orderRef", mode="before")
+    @classmethod
+    def validate_orderRef(cls, value):
+        if value is None:
+            raise ValueError("Order Reference is required!")
+        if value <=0:
+            raise ValueError("Order Reference should be a positive number!")
+        if value <=100 or value >= 999:
+            raise ValueError("Order Reference must be between 100 and 999!")
+        return value
+
+    @field_validator("version", mode="before")
+    @classmethod
+    def validate_version(cls, value):
+        if value is None:
+            raise ValueError("Version value requred!")
+        if value < 0 :
+            raise ValueError("Version has to be a positive number!")
+        return value
+
 #?? usage
 class ProductResponse():
     def __init__(self, message):

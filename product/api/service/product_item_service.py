@@ -3,7 +3,7 @@ from api.dto.product import ProductOrderItem
 
 from api.unit_of_work.product_item_uow import product_order_reservation
 from api.service.product_service import get_product
-from api.utils.resp_codes import resp_codes
+from api.utils.resp_codes import resp_codes, LOW, NO_PROD_DATA
 from typing import Callable
 
 RESP_CODES=resp_codes()
@@ -25,7 +25,7 @@ def create_product_order_item(
     
     if source_product is None:
         log.warning(f"Product data not found for {prod_code}!")
-        return Service_Response(RESP_CODES['NO_PROD_DATA'], None)
+        return Service_Response(RESP_CODES[NO_PROD_DATA], None)
 
     if source_product.stock >= productOrderItem.stock:
         response = product_order_reservation(
@@ -35,4 +35,4 @@ def create_product_order_item(
             repo_update_product_item_fn)
         return Service_Response(response.message, None)
 
-    return Service_Response(RESP_CODES['LOW'], None)
+    return Service_Response(RESP_CODES[LOW], None)

@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 
 from api.utils.db_tools import get_collection, get_client
 from api.utils.app_logger import logger
-from api.utils.resp_codes import resp_codes
+from api.utils.resp_codes import resp_codes, VER, OK
 from api.utils.constants import INIT_STATE
 
 from api.models.product import ProductData, ProductStockData, ProductOderItemData
@@ -33,6 +33,7 @@ def product_order_reservation(
             
                 with client.start_session() as session:
 
+                    #Move out from session
                     new_product_version = curr_product_version + 1
                     new_product_stock = curr_product_stock - prod_odr_itm.stock
                     
@@ -63,10 +64,10 @@ def product_order_reservation(
                         session.commit_transaction()
                         session.end_session()
 
-                        return Repo_Response(RESP_CODES['OK'], None)
+                        return Repo_Response(RESP_CODES[OK], None)
         else:
             log.warning(f"Stale version of product code {product_code}")
-            return Repo_Response(RESP_CODES['VER'], None)
+            return Repo_Response(RESP_CODES[VER], None)
 
     except Exception as e:
         log.warning(f"Error reserving items for order : {e}")
