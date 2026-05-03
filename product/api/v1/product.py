@@ -1,18 +1,19 @@
 from fastapi import APIRouter, Depends, HTTPException
+import json
 
 from api.service.product_service import get_async_product, create_product, update_product_desc, update_product_stock
-from api.service.product_item_service import create_product_order_item
+from api.service.product_item_service import create_product_order_item, get_product_order_item, confirm_product_order_items
 
-from api.dto.product import Product, ProductOrderItem, ProductStock, Client_Data_Response, Client_Message_Response
+from api.dto.product import Product, ProductOrderItem, ConfirmOrderItemsRequest, ProductStock, Client_Data_Response, Client_Message_Response
 from api.models.product import ProductData, ProductDescData, ClientProductData
 
 from api.utils.message import get_api_response_messages, get_mutators
-from api.utils.resp_codes import resp_codes, OK, ERR, DUP, VER, LOW
+from api.utils.resp_codes import resp_codes, OK, ERR, DUP, VER, LOW, NO_MATCH
 from .utils.data_mapper import to_product_data, to_product_desc_data, to_client_product_data
 from api.utils.app_logger import logger
 
 from api.service.product_service_dep import get_product_dep, update_product_dep, create_product_dep, update_product_stock_dep, get_product_async_dep
-from api.service.product_item_service_dep import update_product_item_stock_dep
+from api.service.product_item_service_dep import create_product_item_dep, get_product_item_stock_dep, confirm_product_item_dep
 
 log = logger(__name__)
 router = APIRouter()
@@ -105,14 +106,14 @@ def reserve_product_order_stock_endpoint(
     productOrderItem: ProductOrderItem, #Convert to an Array
     get_product_fn=Depends(get_product_dep),
     repo_update_stock_fn=Depends(update_product_stock_dep),
-    repo_update_product_item_fn=Depends(update_product_item_stock_dep)):
+    repo_create_product_item_fn=Depends(create_product_item_dep)):
 
     try:
         response = create_product_order_item(
             productOrderItem,
             get_product_fn=get_product_fn,
             repo_update_stock_fn=repo_update_stock_fn,
-            repo_update_product_item_fn=repo_update_product_item_fn)
+            repo_update_product_item_fn=repo_create_product_item_fn)
     except Exception as e:
         log.warning(f"Error reserving product items.")
         raise HTTPException(status_code=500, detail=f"Error reserving products.")
@@ -133,6 +134,42 @@ def reserve_product_order_stock_endpoint(
 
     log.warning(f"{api_responses['PRODUCT_NOT_RESERVED']}")
     return HTTPException(status_code=400, detail=f"{api_responses['PRODUCT_NOT_RESERVED']}")
+
+
+@router.put("/order/items", tags=["product stock"])
+async def confirm_product_order_items_endpoint(
+    confirmOrderItemsRequest: ConfirmOrderItemsRequest,
+    repo_confirm_product_order_items_fn=Depends(confirm_product_item_dep),
+    repo_get_async_product_fn=Depends(get_product_item_stock_dep)):
+    
+    try:
+        response = await confirm_product_order_items(
+            confirmOrderItemsRequest,
+            repo_confirm_product_order_items_fn=repo_confirm_product_order_items_fn,
+            repo_get_async_product_fn=repo_get_async_product_fn)
+        
+    except Exception as e:
+        raise #HTTPException(status_code=500, detail=f"Error matching line items!")
+
+    response_code = getattr(response, "message", None)
+    response_data = getattr(response, "data", None)
+
+    if response_code == RESP_CODES[OK]:
+        return Client_Data_Response(response_data) #To Client data stru
+    if response_code == RESP_CODES[NO_MATCH]:
+        return Client_Data_Response(response_data)
+
+    return HTTPException(status_code=400, detail=f"Error matching line items")
+
+
+@router.get("/order/{order_number}/items", tags=["product stock"])
+async def get_product_order_items_endpoint(
+    order_number: str,
+    repo_get_async_product_fn=Depends(get_product_item_stock_dep)):
+
+    data = await get_product_order_item(order_number, repo_get_async_product_fn)
+    print(data)
+    return HTTPException(status_code=200, detail=data)
 
 #Reconsile product items to change the stats to confirm!
 #...

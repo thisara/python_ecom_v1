@@ -53,7 +53,7 @@ def create_product(
 
     except Exception as e:
         log.warning(f"Error creating product : {e}")
-        raise RuntimeError(e)
+        raise #RuntimeError(e)
     
 def update_product_desc(
     productDescData: ProductDescData,

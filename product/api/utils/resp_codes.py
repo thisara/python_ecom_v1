@@ -6,6 +6,7 @@ LOW="LOW"
 VER="VER"
 NO_PROD="NO_PROD"
 NO_PROD_DATA="NO_PROD_DATA"
+NO_MATCH="NO_MATCH"
 
 def resp_codes() -> dict:
 
@@ -16,7 +17,8 @@ def resp_codes() -> dict:
         "LOW" : "LOW STOCK",
         "VER" : "VERSION MISMATCH",
         "NO_PROD" : "NO PRODUCT",
-        "NO_PROD_DATA" : "NO PRODUCT DATA"
+        "NO_PROD_DATA" : "NO PRODUCT DATA",
+        "NO_MATCH" : "ITEMS NOT MATCHED"
     }
 
     return codes

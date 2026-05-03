@@ -31,3 +31,17 @@ class OrderNumber():
     date_created: Optional[str] = None 
     date_updated: Optional[str] = None 
     is_active: Optional[str] = True 
+
+#---API Contracts
+
+@dataclass
+class OrderLineItemConfirm():
+    code: int
+    stock: float
+    version: int
+
+@dataclass
+class OrderItemConfirm():
+    orderRefernce: str
+    productItems: List[OrderLineItemConfirm]
+    

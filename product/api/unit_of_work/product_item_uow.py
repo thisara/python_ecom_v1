@@ -1,10 +1,11 @@
 from typing import Callable
 from datetime import datetime, timezone
+import shortuuid
 
 from api.utils.db_tools import get_collection, get_client
 from api.utils.app_logger import logger
 from api.utils.resp_codes import resp_codes, VER, OK
-from api.utils.constants import INIT_STATE
+from api.utils.constants import INIT_STATE, INIT_VERSION, INIT_STATUS
 
 from api.models.product import ProductData, ProductStockData, ProductOderItemData
 from api.dto.product import Product, ProductOrderItem, Repo_Response
@@ -38,27 +39,31 @@ def product_order_reservation(
                     new_product_stock = curr_product_stock - prod_odr_itm.stock
                     
                     tx_time = datetime.now(timezone.utc)
+                    order_item_id = shortuuid.uuid()
 
                     productStockData = ProductStockData(
-                        product_code,
-                        new_product_stock,
-                        new_product_version,
-                        tx_time
+                        code=product_code,
+                        stock=new_product_stock,
+                        version=new_product_version,
+                        date_updated=tx_time
                     )
                     
                     with session.start_transaction():    
 
                         product_order_item_data = ProductOderItemData(
-                            prod_odr_itm.code, 
-                            prod_odr_itm.stock, 
-                            prod_odr_itm.orderRef, 
-                            new_product_version,
-                            tx_time,
-                            tx_time,
-                            INIT_STATE
+                            order_item_id=order_item_id,
+                            code=prod_odr_itm.code, 
+                            stock=prod_odr_itm.stock, 
+                            orderRef=prod_odr_itm.orderRef, 
+                            version=new_product_version,
+                            status=INIT_STATUS,
+                            date_created=tx_time,
+                            date_updated=tx_time,
+                            is_active=INIT_STATE
                         )
                         
                         repo_update_stock_fn(productStockData, session)
+                        #change function name to create
                         repo_update_product_item_fn(product_order_item_data, session)
                         
                         session.commit_transaction()

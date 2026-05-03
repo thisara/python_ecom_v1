@@ -1,11 +1,14 @@
-from api.models.order import OrderData, OrderItemData, OrderNumber
+from api.models.order import OrderData, OrderItemData, OrderNumber, OrderLineItemConfirm, OrderItemConfirm
 from api.dto.order import OrderRequest, Service_Response
 from api.repository.order_repository import repo_create_order, repo_get_order, repo_reserve_order_number
 from api.utils.resp_codes import resp_codes, ERR, DUP, OK
 import uuid
 import requests
+from typing import List
 from datetime import datetime, timezone
 from api.utils.app_logger import logger
+import json
+from dataclasses import asdict
 
 log = logger(__name__)
 RESP_CODES=resp_codes()
@@ -79,7 +82,7 @@ def reserve_order_number():
 
 def _to_order_data(orderRequest: OrderRequest) -> OrderData:
 
-    record_time = datetime.now(timezone.utc)
+    record_time = datetime.now(timezone.utc).isoformat()
 
     if not orderRequest:
         return None
@@ -113,9 +116,35 @@ def _to_order_data(orderRequest: OrderRequest) -> OrderData:
 
 
 def confirm_product_items(orderData: OrderData):
-    api_call()
+    api_call(orderData)
 
-def api_call():
-    print('waiting')
-    time.sleep(5)
-    print('done')
+def api_call(order_data: OrderData):
+
+    order_number: str = order_data.order_number
+    line_items: List[OrderItemData] = order_data.order_items
+
+    c_lines: List = []
+
+    for i in line_items:
+        line = OrderLineItemConfirm(
+            code = i.prod_code,
+            stock = i.quantity,
+            version = i.version
+        )
+        c_lines.append(line)
+
+    order: OrderItemConfirm = OrderItemConfirm(
+        orderRefernce = order_number,
+        productItems = c_lines
+    )
+
+    rest_order = json.dumps(asdict(order))
+    print(f"-------->> : {rest_order}")
+
+    url: str = "http://127.0.0.1:8001/product/order/items"
+    response = requests.put(url, rest_order)
+    
+    print(f"response : {response.json()}")
+
+    #Handdle matched, partial-matched, non-matched, error
+    

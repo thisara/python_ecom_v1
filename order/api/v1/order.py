@@ -15,7 +15,7 @@ def create_order_endpoint(orderRequest: OrderRequest):
         response = create_order(orderRequest)
     except Exception as e:
         log.warning(f"Error creating order : {e}")
-        raise HTTPException(status=500, detail=f"Error creating order.")
+        raise #HTTPException(status_code=500, detail=f"Error creating order.")
 
     response_code = getattr(response, "message", None)
 
