@@ -129,8 +129,7 @@ def api_call(order_data: OrderData):
         line = OrderLineItemConfirm(
             code = i.prod_code,
             stock = i.quantity,
-            version = i.version
-        )
+            version = i.version)
         c_lines.append(line)
 
     order: OrderItemConfirm = OrderItemConfirm(
@@ -143,7 +142,7 @@ def api_call(order_data: OrderData):
 
     url: str = "http://127.0.0.1:8001/product/order/items"
     response = requests.put(url, rest_order)
-    
+
     print(f"response : {response.json()}")
 
     #Handdle matched, partial-matched, non-matched, error

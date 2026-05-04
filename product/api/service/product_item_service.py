@@ -91,13 +91,22 @@ async def confirm_product_order_items(
         req_order_line_confirm = _get_order_line_item(oi.code, oi.stock, oi.version, INIT_STATUS)
         req_order_items.append(req_order_line_confirm)
     
-    confirmed_items = [i for i in req_order_items 
+    confirmed_items: List[OrderLineItemConfirm] = [i for i in res_order_items 
                         if i.status is not CONF_STATUS 
-                            and i in res_order_items 
+                            and i in req_order_items 
                                 and setattr(i, "status", CONF_STATUS) is None]
 
-    #persist confirmed state!
-
+    try:
+        confirm_order = OrderConfirmedData(
+            order_number = order_number,
+            status = 'confirmed',
+            confirmed_items = confirmed_items
+        )
+        up_response = await repo_confirm_product_order_items_fn(confirm_order)
+        print(up_response)
+    except Exception as e:
+        raise
+    
     if len(confirmed_items) == 0:
         confirmed_order_data: OrderConfirmedData = _get_order_confirm_data(order_number, "none matched", confirmed_items)
         return Service_Response(message=RESP_CODES[NO_MATCH], data=confirmed_order_data)
