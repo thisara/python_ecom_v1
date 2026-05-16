@@ -24,6 +24,19 @@ class OrderData():
     is_active: Optional[str] = True 
 
 @dataclass
+class ProductOrderItemResponseData():
+    prod_code: int
+    quantity: float
+    version: int
+    status: str
+
+@dataclass
+class ProductOrderResponseData():
+    order_number: str
+    confirmed_items: List[ProductOrderItemResponseData]
+    status: str
+
+@dataclass
 class OrderNumber():
     order_number: str
     version: int

@@ -1,11 +1,12 @@
-from api.utils.db_tools import get_collection, get_collection_names, get_async_collection
-from api.models.product import ProductOderItemData, ProductOrderData, OrderConfirmedData, OrderLineItemConfirm
-from api.dto.product import Repo_Response
+from typing import List
+from pymongo import UpdateOne
 from dataclasses import asdict
+from api.utils.db_tools import get_collection, get_collection_names, get_async_collection
+from api.models.product import ProductOderItemData, OrderConfirmedData, OrderLineItemConfirm
+from api.dto.product import Repo_Response
 from api.utils.resp_codes import resp_codes, OK, ERR
 from api.utils.app_logger import logger
-
-from pymongo import UpdateOne
+from api.repository.utils.item_respository_utils import to_product_items
 
 log = logger(__name__)
 RESP_CODES=resp_codes()
@@ -33,7 +34,7 @@ async def repo_get_product_order_item(order_number: str, session = None) -> Repo
     try:
         col = get_async_collection(COL_PRODUCT_ITEM)
         data = await col.find({"orderRef": order_number}).to_list(length=100)
-        return Repo_Response(RESP_CODES[OK], data=_to_product_items(order_number, data))
+        return Repo_Response(RESP_CODES[OK], data=to_product_items(order_number, data))
 
     except Exception as e:
         log.warning(f"Error fetching product items for order : {order_number}")
@@ -52,33 +53,9 @@ async def repo_confirm_product_order_items(order_confirm:OrderConfirmedData, ses
         updates.append(v)
     try:
         col = get_async_collection(COL_PRODUCT_ITEM)
-        res = col.bulk_write(updates, session=session)
+        col.bulk_write(updates, session=session)
+        return Repo_Response(RESP_CODES[OK], data=None)
     except Exception as e:
         log.warning(f"Error confirming order items!")
         raise
-    return Repo_Response(RESP_CODES[OK], data=None)
-
-
-#---
-
-def _to_product_items(order_number: str, data: dict) -> ProductOrderData:
-    if not data:
-        return None
     
-    items: ProductOderItemData = []
-
-    for d in data:
-        items.append(ProductOderItemData(
-            order_item_id=d.get("order_item_id"),
-            code=d.get("code"),
-            orderRef=d.get("orderRef"),
-            stock=d.get("stock"),
-            version=d.get("version"),
-            status=d.get("status"),
-            date_created=d.get("date_created"),
-            date_updated=d.get("date_updated"),
-            is_active=d.get("is_active")))
-    
-    return ProductOrderData(
-        order_number=order_number,
-        product_items=items)

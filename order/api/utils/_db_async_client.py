@@ -1,3 +1,4 @@
+import os
 import configparser
 from motor.motor_asyncio import AsyncIOMotorClient
 from threading import Lock
@@ -17,7 +18,7 @@ class AsyncDBConnection:
             try:
                 _config = configparser.ConfigParser()
                 _config.read(config_file)
-                _config.db_url = _config["database"]["MONGO_URL"]
+                _config.db_url = os.getenv('DB_URL')
                 _config.db_name = _config["database"]["DB_NAME"]
             except Exception as e:
                 raise e
@@ -32,7 +33,7 @@ class AsyncDBConnection:
                     try:
                         cls._instance._client = AsyncIOMotorClient(_config.db_url)
                         cls._instance._db = cls._instance._client[_config.db_name]
-                    except PyMongoError as e:
+                    except Exception as e:
                         log.error(f"Failed to connect to DB: {e}")
                         raise
 

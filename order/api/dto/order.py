@@ -70,6 +70,8 @@ class OrderRequest(BaseModel):
             raise ValueError("Line ID should be unique!")
         return value 
 
+#--- API Responses
+
 class Client_Message_Response():
     def __init__(self, message: str):
         self.message = message
@@ -109,3 +111,4 @@ class Service_Response():
             "message": self.message,
             "data": self.data
         }
+    

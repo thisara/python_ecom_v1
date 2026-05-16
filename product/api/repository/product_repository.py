@@ -1,11 +1,11 @@
-from api.utils.db_tools import get_collection, get_async_collection, get_collection_names
+from dataclasses import asdict
+from pymongo.errors import DuplicateKeyError
 from api.models.product import ProductData, ProductDescData, ProductStockData
 from api.dto.product import Repo_Response
-from pymongo.errors import DuplicateKeyError
 from api.utils.resp_codes import resp_codes, OK, ERR
-from dataclasses import asdict
-import asyncio
+from api.utils.db_tools import get_collection, get_async_collection, get_collection_names
 from api.utils.app_logger import logger
+from api.repository.utils.repository_utils import to_product
 
 log = logger(__name__)
 RESP_CODES=resp_codes()
@@ -76,7 +76,7 @@ def repo_get_product(code: int) -> Repo_Response:
         raise
     
     if data is not None:
-        return Repo_Response(message=None, data=_to_product(data))
+        return Repo_Response(message=None, data=to_product(data))
         
     return Repo_Response(message=None, data=None)
 
@@ -90,20 +90,8 @@ async def repo_get_async_product(code: int) -> Repo_Response:
         raise
     
     if data is not None:
-        return Repo_Response(message=None, data=_to_product(data))
+        return Repo_Response(message=None, data=to_product(data))
         
     return Repo_Response(message=None, data=None)
-    
-#DT UTILS
 
-def _to_product(data: dict) -> ProductData:
-    if not data:
-        return None
-    
-    return ProductData(
-        code=data.get("code"),
-        name=data.get("name"),
-        stock=data.get("stock"),
-        version=data.get("version")
-    )
-    
+ 

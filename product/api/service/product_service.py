@@ -2,7 +2,7 @@ from typing import Callable
 from datetime import datetime, timezone
 
 from api.models.product import ProductData, ProductDescData, ProductStockData
-from api.dto.product import Product, ProductOrderItem, ProductStock, Service_Response
+from api.dto.product import Product, ProductOrderItem, ProductStock, Repo_Response, Service_Response
 from api.repository.product_repository import repo_get_product
 from api.utils.resp_codes import resp_codes, OK, ERR, DUP, NO_PROD, NO_PROD_DATA, LOW
 from api.utils.message import get_mutators, ADD, REM

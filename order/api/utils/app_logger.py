@@ -1,6 +1,6 @@
 import logging
 
-#read from config
+#TODO:read from config
 c_log_level = logging.INFO
 f_log_level = logging.INFO
 f_file_path = '.'

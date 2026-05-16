@@ -1,7 +1,6 @@
+import os
 import configparser
 from pymongo import MongoClient
-from pymongo.database import Database
-from pymongo.collection import Collection
 from threading import Lock
 from api.utils.app_logger import logger
 
@@ -19,7 +18,7 @@ class DBConnection:
             try:
                 _config = configparser.ConfigParser()
                 _config.read(config_file)
-                _config.db_url = _config["database"]["MONGO_URL"]
+                _config.db_url = os.getenv('DB_URL')
                 _config.db_name = _config["database"]["DB_NAME"]
             except Exception as e:
                 raise e
@@ -34,7 +33,7 @@ class DBConnection:
                     try:
                         cls._instance._client = MongoClient(_config.db_url)
                         cls._instance._db = cls._instance._client[_config.db_name]
-                    except PyMongoError as e:
+                    except Exception as e:
                         log.error(f"Failed to connect to DB: {e}")
                         raise
 

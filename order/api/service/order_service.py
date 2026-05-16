@@ -1,50 +1,75 @@
-from api.models.order import OrderData, OrderItemData, OrderNumber, OrderLineItemConfirm, OrderItemConfirm
-from api.dto.order import OrderRequest, Service_Response
-from api.repository.order_repository import repo_create_order, repo_get_order, repo_reserve_order_number
-from api.utils.resp_codes import resp_codes, ERR, DUP, OK
 import uuid
-import requests
-from typing import List
+from fastapi import Request
+from typing import Callable
 from datetime import datetime, timezone
+from api.models.order import OrderData, OrderNumber, ProductOrderResponseData
+from api.dto.order import OrderRequest, Repo_Response, Service_Response
+from api.utils.resp_codes import NON, PAR, resp_codes, ERR, DUP, OK
 from api.utils.app_logger import logger
-import json
-from dataclasses import asdict
+from api.utils.constants import INIT_ORDER_NUMBER_STATUS, ALL_MATCHED, PAR_MATCHED
+from api.service.utils.service_utils import map_json_to_order_response_data, to_order_data
 
 log = logger(__name__)
 RESP_CODES=resp_codes()
 
-def create_order(orderRequest: OrderRequest):
+async def create_order(
+        orderRequest: OrderRequest, 
+        request: Request,
+        get_order_fn: Callable,
+        repo_create_order_fn: Callable,
+        confirm_product_items_fn: Callable,
+        repo_confirm_order_items_fn: Callable) -> Service_Response:
+    
     if orderRequest is None:
         return Service_Response(RESP_CODES[ERR], None)
 
     current_order: OrderData = None
+
     try:
         if orderRequest and orderRequest.order_number is not None:
             order_number = orderRequest.order_number            
-            current_order = get_order(order_number)
+            current_order = await get_order_fn(order_number)
 
         if current_order and current_order.data is not None:
             return Service_Response(message=RESP_CODES[DUP], data=None)
 
-        order_data: OrderData = _to_order_data(orderRequest)
+        order_data: OrderData = to_order_data(orderRequest)
 
-        #TX:
-        response = repo_create_order(order_data)
+        """ TODO: repo_create_order_fn, confirm_product_items_fn and 
+        repo_confirm_order_items_fn should be a sync transaction or part of async workflow. """
+
+        create_response = await repo_create_order_fn(order_data)
         
-        if response and response.message == RESP_CODES[OK]:
-            #ASYNC : confirm product item consumption - send to Kafka
-            confirm_product_items(order_data)
-            return Service_Response(RESP_CODES[OK], None)
+        if create_response and create_response.message == RESP_CODES[OK]:
 
+            confirm_response = await confirm_product_items_fn(order_data, request)
+            
+            conf_order_data: ProductOrderResponseData = map_json_to_order_response_data(confirm_response)
+
+            if len(conf_order_data.confirmed_items) == 0:
+                return Service_Response(RESP_CODES[NON], None)
+
+            order_itm_confirm_response: Repo_Response = await repo_confirm_order_items_fn(conf_order_data)
+
+            if order_itm_confirm_response.message == RESP_CODES[OK]:
+                if conf_order_data.status == ALL_MATCHED:
+                    return Service_Response(RESP_CODES[OK], None)
+                if conf_order_data.status == PAR_MATCHED:
+                    return Service_Response(RESP_CODES[PAR], None)
+            
         return Service_Response(RESP_CODES[ERR], None)
 
     except Exception as e:
         log.warning(f"Error creating order : {e}")
         raise
 
-def get_order(order_number: str) -> Service_Response:
+
+async def get_order(
+        order_number: str,
+        get_order_repo_fn: Callable) -> Service_Response:
+
     try:
-        response = repo_get_order(order_number)
+        response = await get_order_repo_fn(order_number)
         order_data = response.get_all() or {}
         resp_data = order_data.get("data")
     except Exception as e:
@@ -56,7 +81,8 @@ def get_order(order_number: str) -> Service_Response:
     return Service_Response(message=None, data=None)
 
 
-def reserve_order_number():
+async def reserve_order_number(
+        reserve_order_number_repo_fn=Callable) -> Service_Response:
 
     record_time = datetime.now(timezone.utc)
 
@@ -64,11 +90,11 @@ def reserve_order_number():
         order_number = OrderNumber(
             order_number = uuid.uuid1(),
             version = 1,
-            status = 'active',
+            status = INIT_ORDER_NUMBER_STATUS,
             date_created = record_time,
             date_updated = record_time,
             is_active = True)
-        response = repo_reserve_order_number(order_number)
+        response = await reserve_order_number_repo_fn(order_number)
     except Exception as e:
         raise
 
@@ -77,73 +103,3 @@ def reserve_order_number():
     
     return Service_Response(message=None, data=None)
 
-
-#--
-
-def _to_order_data(orderRequest: OrderRequest) -> OrderData:
-
-    record_time = datetime.now(timezone.utc).isoformat()
-
-    if not orderRequest:
-        return None
-
-    if not orderRequest.order_items:
-        return None
-
-    order_line_items: List = []
-
-    for i in orderRequest.order_items:
-        item_data = OrderItemData(
-            line_id = i.line_id,
-            prod_code = i.product_code,
-            quantity = i.quantity,
-            status = 'recieved',
-            version = i.version,
-            date_created = record_time,
-            date_updated = record_time,
-            is_active = True)
-
-        order_line_items.append(item_data)
-
-    return OrderData(
-        order_number = orderRequest.order_number,
-        order_items = order_line_items,
-        version = 0,
-        status = 'recieved',
-        date_created = record_time, 
-        date_updated = record_time,
-        is_active = True)
-
-
-def confirm_product_items(orderData: OrderData):
-    api_call(orderData)
-
-def api_call(order_data: OrderData):
-
-    order_number: str = order_data.order_number
-    line_items: List[OrderItemData] = order_data.order_items
-
-    c_lines: List = []
-
-    for i in line_items:
-        line = OrderLineItemConfirm(
-            code = i.prod_code,
-            stock = i.quantity,
-            version = i.version)
-        c_lines.append(line)
-
-    order: OrderItemConfirm = OrderItemConfirm(
-        orderRefernce = order_number,
-        productItems = c_lines
-    )
-
-    rest_order = json.dumps(asdict(order))
-    print(f"-------->> : {rest_order}")
-
-    url: str = "http://127.0.0.1:8001/product/order/items"
-    response = requests.put(url, rest_order)
-
-    print(f"response : {response.json()}")
-
-    #Handdle matched, partial-matched, non-matched, error
-    

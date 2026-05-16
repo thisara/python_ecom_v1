@@ -8,7 +8,7 @@ from api.dto.product import Product, ProductOrderItem, ConfirmOrderItemsRequest,
 from api.models.product import ProductData, ProductDescData, ClientProductData
 
 from api.utils.message import get_api_response_messages, get_mutators
-from api.utils.resp_codes import resp_codes, OK, ERR, DUP, VER, LOW, NO_MATCH
+from api.utils.resp_codes import resp_codes, OK, ERR, DUP, VER, LOW, NO_MATCH, PAR_MATCH
 from .utils.data_mapper import to_product_data, to_product_desc_data, to_client_product_data
 from api.utils.app_logger import logger
 
@@ -19,8 +19,8 @@ log = logger(__name__)
 router = APIRouter()
 
 RESP_CODES=resp_codes()
-mutators = get_mutators()
-api_responses = get_api_response_messages()
+mutators=get_mutators()
+api_responses=get_api_response_messages()
 
 @router.post("/", tags=["product"])
 def create_product_endpoint(
@@ -115,7 +115,7 @@ def reserve_product_order_stock_endpoint(
             repo_update_stock_fn=repo_update_stock_fn,
             repo_update_product_item_fn=repo_create_product_item_fn)
     except Exception as e:
-        log.warning(f"Error reserving product items.")
+        log.warning(f"Error reserving product items. : {e}")
         raise HTTPException(status_code=500, detail=f"Error reserving products.")
 
     response_code = getattr(response, "message", None)
@@ -141,7 +141,7 @@ async def confirm_product_order_items_endpoint(
     confirmOrderItemsRequest: ConfirmOrderItemsRequest,
     repo_confirm_product_order_items_fn=Depends(confirm_product_item_dep),
     repo_get_async_product_fn=Depends(get_product_item_stock_dep)):
-    
+
     try:
         response = await confirm_product_order_items(
             confirmOrderItemsRequest,
@@ -149,14 +149,13 @@ async def confirm_product_order_items_endpoint(
             repo_get_async_product_fn=repo_get_async_product_fn)
         
     except Exception as e:
-        raise #HTTPException(status_code=500, detail=f"Error matching line items!")
+        log.warning(f"Error while confirming order items : {e}")
+        raise HTTPException(status_code=500, detail=f"Error matching line items!")
 
     response_code = getattr(response, "message", None)
     response_data = getattr(response, "data", None)
 
-    if response_code == RESP_CODES[OK]:
-        return Client_Data_Response(response_data) #To Client data stru
-    if response_code == RESP_CODES[NO_MATCH]:
+    if response_code in (RESP_CODES[OK],RESP_CODES[PAR_MATCH],RESP_CODES[NO_MATCH]) :
         return Client_Data_Response(response_data)
 
     return HTTPException(status_code=400, detail=f"Error matching line items")
@@ -167,8 +166,12 @@ async def get_product_order_items_endpoint(
     order_number: str,
     repo_get_async_product_fn=Depends(get_product_item_stock_dep)):
 
-    data = await get_product_order_item(order_number, repo_get_async_product_fn)
-    print(data)
+    try:
+        data = await get_product_order_item(order_number, repo_get_async_product_fn)
+    except Exception as e:
+        log.warning(f"Error fetching order otems : {e}")
+        return HTTPException(status_code=400, detail=f"Error fetching order otems.")
+    
     return HTTPException(status_code=200, detail=data)
 
 #Reconsile product items to change the stats to confirm!
@@ -193,7 +196,7 @@ def update_product_stock_endpoint(
 
     except Exception as e:
         log.warning(f"Error updating product : {e}")
-        raise HTTPException(status_code=500, detail=f"Error updating product code {prod_code}!")
+        raise HTTPException(status_code=500, detail=f"Error updating product code : {prod_code}!")
 
     response_code = getattr(response, "message", None)
 

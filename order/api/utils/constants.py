@@ -1,0 +1,7 @@
+INIT_ORDER_STATUS='recieved'
+INIT_ORDER_VERSION=0
+INIT_ORDER_ITEM_STATUS='recieved'
+CONF_ORDER_ITEM_STATUS='confirmed'
+INIT_ORDER_NUMBER_STATUS='issued'
+ALL_MATCHED='all matched'
+PAR_MATCHED='partial matched'

@@ -3,7 +3,7 @@ from typing import List
 from collections import Counter
 
 class Product(BaseModel):
-    #model_config = ConfigDict(extra='allow')
+    #TODO:Optional - model_config = ConfigDict(extra='allow')
     code: int
     name: str
 
@@ -26,6 +26,7 @@ class Product(BaseModel):
         if len(value) > 100:
             raise ValueError("Product name cannot exceed 100 characters!")
         return value
+
 
 class ProductStock(BaseModel):
     code: int
@@ -51,9 +52,16 @@ class ProductStock(BaseModel):
         if not isinstance(float(value), float):
             raise ValueError("Stock has to be a number!")
         return value
-
-    #validate mutator
-    #remove boilerplace code
+    
+    @field_validator("mutator", mode="before")
+    @classmethod
+    def validate_mutator(cls, value):
+        if value is None:
+            raise ValueError("Mutator is required!")
+        if value not in ('ADD','REM'):
+            raise ValueError("Mutator is incorrect!")
+        return value
+    
 
 class ProductOrderItem(BaseModel):
     code: int
@@ -99,6 +107,7 @@ class ProductOrderItem(BaseModel):
             raise ValueError("Version has to be a positive number!")
         return value
 
+
 class OrderLineItem(BaseModel):
     code: int
     stock: float
@@ -133,6 +142,7 @@ class OrderLineItem(BaseModel):
             raise ValueError("Version has to be a positive number!")
         return value
 
+
 class ConfirmOrderItemsRequest(BaseModel):
     orderRefernce: str
     productItems: List[OrderLineItem] #change to productItems
@@ -162,10 +172,7 @@ class ConfirmOrderItemsRequest(BaseModel):
 
         return value
             
-#?? usage
-class ProductResponse():
-    def __init__(self, message):
-        self.message = message
+#---API Responses
 
 class Client_Data_Response():
     def __init__(self, data: dict):
