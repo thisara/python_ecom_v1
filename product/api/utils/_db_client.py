@@ -34,7 +34,7 @@ class DBConnection:
                     try:
                         cls._instance._client = MongoClient(_config.db_url)
                         cls._instance._db = cls._instance._client[_config.db_name]
-                    except PyMongoError as e:
+                    except Exception as e:
                         log.error(f"Failed to connect to DB: {e}")
                         raise
 

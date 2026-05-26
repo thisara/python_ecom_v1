@@ -2,6 +2,7 @@ import configparser
 from motor.motor_asyncio import AsyncIOMotorClient
 from threading import Lock
 from api.utils.app_logger import logger
+from pathlib import Path
 
 log = logger(__name__)
 CONFIG_FILE="config.ini"
@@ -13,13 +14,19 @@ class AsyncDBConnection:
     def __new__(cls, config_file: str = CONFIG_FILE):
         if not cls._instance:
             log.info(f"Start creating a new database client.")
-            
+            log.info(f"Config file : {config_file}")
             try:
                 _config = configparser.ConfigParser()
-                _config.read(config_file)
+                _app_root = Path(__file__).resolve().parent.parent.parent
+                _config_path = f"{_app_root}/{config_file}"
+                
+                log.info(f"{_config_path}")
+                
+                _config.read(_config_path)
                 _config.db_url = _config["database"]["MONGO_URL"]
                 _config.db_name = _config["database"]["DB_NAME"]
             except Exception as e:
+                log.error(f"Failed to read config : {_config} :{e}")
                 raise e
 
             log.info(f"Database connection url : {_config.db_url}")
@@ -32,7 +39,7 @@ class AsyncDBConnection:
                     try:
                         cls._instance._client = AsyncIOMotorClient(_config.db_url)
                         cls._instance._db = cls._instance._client[_config.db_name]
-                    except PyMongoError as e:
+                    except Exception as e:
                         log.error(f"Failed to connect to DB: {e}")
                         raise
 

@@ -1,19 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException
-import json
-
-from api.service.product_service import get_async_product, create_product, update_product_desc, update_product_stock
+from api.service.product_service import create_product, update_product_desc, update_product_stock
 from api.service.product_item_service import create_product_order_item, get_product_order_item, confirm_product_order_items
-
-from api.dto.product import Product, ProductOrderItem, ConfirmOrderItemsRequest, ProductStock, Client_Data_Response, Client_Message_Response
-from api.models.product import ProductData, ProductDescData, ClientProductData
-
-from api.utils.message import get_api_response_messages, get_mutators
-from api.utils.resp_codes import resp_codes, OK, ERR, DUP, VER, LOW, NO_MATCH, PAR_MATCH
-from .utils.data_mapper import to_product_data, to_product_desc_data, to_client_product_data
-from api.utils.app_logger import logger
-
 from api.service.product_service_dep import get_product_dep, update_product_dep, create_product_dep, update_product_stock_dep, get_product_async_dep
 from api.service.product_item_service_dep import create_product_item_dep, get_product_item_stock_dep, confirm_product_item_dep
+from api.dto.product import Product, ProductOrderItem, ConfirmOrderItemsRequest, ProductStock, Client_Data_Response, Client_Message_Response
+from api.utils.message import get_api_response_messages, get_mutators
+from api.utils.resp_codes import resp_codes, OK, DUP, VER, LOW, NO_MATCH, PAR_MATCH
+from .utils.data_mapper import to_product_data, to_product_desc_data, to_client_product_data
+from api.utils.app_logger import logger
 
 log = logger(__name__)
 router = APIRouter()
@@ -103,7 +97,7 @@ def update_product_desc_endpoint(
 
 @router.put("/order/stock", tags=["product stock"])
 def reserve_product_order_stock_endpoint(
-    productOrderItem: ProductOrderItem, #Convert to an Array
+    productOrderItem: ProductOrderItem,
     get_product_fn=Depends(get_product_dep),
     repo_update_stock_fn=Depends(update_product_stock_dep),
     repo_create_product_item_fn=Depends(create_product_item_dep)):
@@ -174,8 +168,6 @@ async def get_product_order_items_endpoint(
     
     return HTTPException(status_code=200, detail=data)
 
-#Reconsile product items to change the stats to confirm!
-#...
 
 @router.put("/stock", tags=["product stock"])
 def update_product_stock_endpoint(

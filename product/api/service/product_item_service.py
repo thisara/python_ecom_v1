@@ -3,9 +3,10 @@ from api.dto.product import OrderLineItem, Service_Response, Repo_Response
 from api.dto.product import ProductOrderItem, ConfirmOrderItemsRequest
 from api.models.product import ProductOrderData, ProductOderItemData, OrderLineItemConfirm, OrderConfirmedData
 from api.unit_of_work.product_item_uow import product_order_reservation
-from api.utils.resp_codes import ERR, resp_codes, LOW, NO_PROD_DATA, OK, NO_MATCH, PAR_MATCH
+from api.utils.resp_codes import ERR, resp_codes, LOW, NO_PROD_DATA, OK, NO_MATCH
 from api.utils.app_logger import logger
-from api.utils.constants import INIT_STATUS, CONF_STATUS, ALL_MATCHED, NON_MATCHED, PAR_MATCHED
+from api.utils.constants import INIT_STATUS, CONF_STATUS, NON_MATCHED
+from api.service.utils.service_utils import get_order_confirm_data, get_order_line_item, get_service_response
 
 log = logger(__name__)
 RESP_CODES=resp_codes()
@@ -82,11 +83,11 @@ async def confirm_product_order_items(
     prd_order_items: ProductOderItemData = product_order_data.product_items
     
     for pi in prd_order_items:
-        res_order_line_confirm = _get_order_line_item(pi.code,pi.stock, pi.version, pi.status)
+        res_order_line_confirm = get_order_line_item(pi.code,pi.stock, pi.version, pi.status)
         res_order_items.append(res_order_line_confirm)
 
     for oi in order_items:
-        req_order_line_confirm = _get_order_line_item(oi.code, oi.stock, oi.version, INIT_STATUS)
+        req_order_line_confirm = get_order_line_item(oi.code, oi.stock, oi.version, INIT_STATUS)
         req_order_items.append(req_order_line_confirm)
     
     confirmed_items: List[OrderLineItemConfirm] = [i for i in res_order_items 
@@ -95,7 +96,7 @@ async def confirm_product_order_items(
                                 and setattr(i, "status", CONF_STATUS) is None]
 
     if len(confirmed_items) == 0:
-        return Service_Response(message=RESP_CODES[NO_MATCH], data=_get_order_confirm_data(order_number, NON_MATCHED, confirmed_items))
+        return Service_Response(message=RESP_CODES[NO_MATCH], data=get_order_confirm_data(order_number, NON_MATCHED, confirmed_items))
     
     else:
         try:
@@ -106,30 +107,8 @@ async def confirm_product_order_items(
             )
             await repo_confirm_product_order_items_fn(confirm_order)
 
-            return _get_service_response(order_number, confirmed_items, req_order_items)
+            return get_service_response(order_number, confirmed_items, req_order_items)
 
         except Exception as e:
             return Service_Response(message=RESP_CODES[ERR], data=None)
-
-#--utils
-
-def _get_service_response(order_number: str, confirmed_items: List, req_order_items: List) -> Service_Response:
-    if len(confirmed_items) == len(req_order_items):
-        return Service_Response(message=RESP_CODES[OK], data=_get_order_confirm_data(order_number, ALL_MATCHED, confirmed_items))
-    else:
-        return Service_Response(message=RESP_CODES[PAR_MATCH], data=_get_order_confirm_data(order_number, PAR_MATCHED, confirmed_items))
-
-
-def _get_order_line_item(code:str, stock: float, version: int, status:str) -> OrderLineItemConfirm:
-    return OrderLineItemConfirm(
-        code = code,
-        stock = stock,
-        version = version,
-        status = status)
-
-def _get_order_confirm_data(order_number: str, status:str, confirmed_items: List[OrderLineItemConfirm]) -> OrderConfirmedData:
-    return OrderConfirmedData(
-        order_number = order_number,
-        status = status,
-        confirmed_items = confirmed_items)
 
