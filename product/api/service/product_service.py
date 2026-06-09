@@ -29,7 +29,7 @@ def create_product(
             prod_code = productData.code
             curr_product = get_product_fn(prod_code)
 
-        if curr_product and curr_product.data is not None:
+        if curr_product is not None and curr_product.data is not None:
             return Service_Response(message=RESP_CODES[DUP], data=None)
 
         record_time = datetime.now(timezone.utc)

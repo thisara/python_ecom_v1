@@ -88,7 +88,7 @@ async def reserve_order_number(
 
     try:
         order_number = OrderNumber(
-            order_number = uuid.uuid1(),
+            order_number = str(uuid.uuid1()),
             version = 1,
             status = INIT_ORDER_NUMBER_STATUS,
             date_created = record_time,

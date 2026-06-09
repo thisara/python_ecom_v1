@@ -2,10 +2,12 @@ import os
 import configparser
 from pymongo import MongoClient
 from threading import Lock
+from pathlib import Path
 from api.utils.app_logger import logger
 
 log = logger(__name__)
 CONFIG_FILE="config.ini"
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 class DBConnection:
     _instance = None
@@ -17,7 +19,7 @@ class DBConnection:
             
             try:
                 _config = configparser.ConfigParser()
-                _config.read(config_file)
+                _config.read(f"{BASE_DIR}/{config_file}")
                 _config.db_url = os.getenv('DB_URL')
                 _config.db_name = _config["database"]["DB_NAME"]
             except Exception as e:

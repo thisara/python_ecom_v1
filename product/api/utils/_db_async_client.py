@@ -6,6 +6,7 @@ from pathlib import Path
 
 log = logger(__name__)
 CONFIG_FILE="config.ini"
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 class AsyncDBConnection:
     _instance = None
@@ -17,12 +18,8 @@ class AsyncDBConnection:
             log.info(f"Config file : {config_file}")
             try:
                 _config = configparser.ConfigParser()
-                _app_root = Path(__file__).resolve().parent.parent.parent
-                _config_path = f"{_app_root}/{config_file}"
-                
-                log.info(f"{_config_path}")
-                
-                _config.read(_config_path)
+                #_app_root = Path(__file__).resolve().parent.parent.parent
+                _config.read(f"{BASE_DIR}/{config_file}")
                 _config.db_url = _config["database"]["MONGO_URL"]
                 _config.db_name = _config["database"]["DB_NAME"]
             except Exception as e:
@@ -39,6 +36,11 @@ class AsyncDBConnection:
                     try:
                         cls._instance._client = AsyncIOMotorClient(_config.db_url)
                         cls._instance._db = cls._instance._client[_config.db_name]
+                        cls._instance._db.product.create_index(
+                            [("code")],
+                            unique=True,
+                            name="code_1"
+                        )
                     except Exception as e:
                         log.error(f"Failed to connect to DB: {e}")
                         raise

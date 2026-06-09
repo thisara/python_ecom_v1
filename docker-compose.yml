@@ -1,0 +1,59 @@
+services:
+  mongodb:
+    image: mongo:7
+    command: ["--replSet", "rs0", "--bind_ip_all"]
+    ports:
+      - "37017:27017"
+    volumes:
+      - mongodb_data:/data/db_rep
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 30s
+      timeout: 5s
+      retries: 10
+
+  mongo-init:
+    image: mongo:7
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    restart: "no"
+    command: >
+      mongosh --host mongodb:27017 --eval
+      "rs.initiate({
+        _id: 'rs0',
+        members: [{ _id: 0, host: 'mongodb:27017' }]
+      })"
+
+  service-product:
+    build:
+      context: ./product
+      dockerfile: Dockerfile
+    container_name: service-product
+    restart: unless-stopped
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    environment:
+      MONGO_URI: mongodb://mongodb:27017/appdb?replicaSet=rs0
+      SERVICE_NAME: service-product
+    ports:
+      - "9001:8086"
+
+  service-order:
+    build:
+      context: ./order
+      dockerfile: Dockerfile
+    container_name: service-order
+    restart: unless-stopped
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    environment:
+      MONGO_URI: mongodb://mongodb:27017/appdb?replicaSet=rs0
+      SERVICE_NAME: service-order
+    ports:
+      - "9002:8087"
+
+volumes:
+  mongodb_data:

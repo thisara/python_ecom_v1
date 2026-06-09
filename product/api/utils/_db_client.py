@@ -1,12 +1,14 @@
 import configparser
 from pymongo import MongoClient
-from pymongo.database import Database
-from pymongo.collection import Collection
+#from pymongo.database import Database
+#from pymongo.collection import Collection
 from threading import Lock
+from pathlib import Path
 from api.utils.app_logger import logger
 
 log = logger(__name__)
 CONFIG_FILE="config.ini"
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 class DBConnection:
     _instance = None
@@ -18,7 +20,7 @@ class DBConnection:
             
             try:
                 _config = configparser.ConfigParser()
-                _config.read(config_file)
+                _config.read(f"{BASE_DIR}/{config_file}")
                 _config.db_url = _config["database"]["MONGO_URL"]
                 _config.db_name = _config["database"]["DB_NAME"]
             except Exception as e:
@@ -34,6 +36,12 @@ class DBConnection:
                     try:
                         cls._instance._client = MongoClient(_config.db_url)
                         cls._instance._db = cls._instance._client[_config.db_name]
+                        #cls._instance._db.create_collection("product")
+                        cls._instance._db.product.create_index(
+                            [("code")],
+                            unique=True,
+                            name="code_1"
+                        )
                     except Exception as e:
                         log.error(f"Failed to connect to DB: {e}")
                         raise

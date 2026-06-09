@@ -1,4 +1,5 @@
 from dataclasses import asdict
+import traceback
 from pymongo.errors import DuplicateKeyError
 from api.models.product import ProductData, ProductDescData, ProductStockData
 from api.dto.product import Repo_Response
@@ -22,8 +23,10 @@ def repo_create_product(productData: ProductData, session = None) -> Repo_Respon
         return Repo_Response(RESP_CODES[OK], {str(db_response.inserted_id)})
     
     except DuplicateKeyError as e:
+        log.warning(f"Duplicate product code : {e}")
         raise
     except Exception as e:
+        log.warning(f"Failed to create product : {e}")
         raise
 
 
@@ -73,6 +76,8 @@ def repo_get_product(code: int) -> Repo_Response:
         data = col.find_one({"code": code})
     except Exception as e:
         log.info(f"Error in fetching {code} : {e}")
+        full_stack_trace = traceback.format_exc()
+        print(full_stack_trace)
         raise
     
     if data is not None:
@@ -86,7 +91,7 @@ async def repo_get_async_product(code: int) -> Repo_Response:
         col = get_async_collection(COL_PRODUCT)
         data = await col.find_one({"code": code})
     except Exception as e:
-        log.info(f"Error in fetching {code} : {e}")
+        log.info(f"Error in async fetching {code} : {e}")
         raise
     
     if data is not None:
